@@ -22,6 +22,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { getMeta, normalizeEntityType, NODE_META } from "@/components/FraudNode";
+import dagre from "dagre";
 
 import { initialNodeTypes, initialEdgeTypes } from "./flowTypes";
 
@@ -248,7 +249,12 @@ function GraphOverviewPanel({
   }, [nodes, searchTerm]);
 
   return (
-    <div className="absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur">
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur"
+    >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-bold text-white">Network overview</div>
@@ -335,146 +341,49 @@ function GraphOverviewPanel({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 const FIT_VIEW_OPTIONS = { padding: 0.2 };
 const DEFAULT_EDGE_OPTIONS = { animated: false };
 
-const LANE_DEFINITIONS = [
-  { id: "left", label: "Repeat Offenders (2+)", x: 0 },
-  { id: "middle", label: "Victims", x: 400 },
-  { id: "right", label: "Single Report", x: 800 },
-] as const;
-
-function getLaneId(node: any): (typeof LANE_DEFINITIONS)[number]["id"] {
-  const type = normalizeEntityType(node.data);
-  if (type === "VICTIM") return "middle";
-  const reports = node.data?.reports || 1;
-  return reports >= 2 ? "left" : "right";
-}
-
-function getNodeLabel(node: any) {
-  return String(node.data?.label || node.data?.value || node.id || "");
-}
-
 function organizeGraphLayout(inputNodes: any[], inputEdges: any[]) {
-  const nodeById = new Map(inputNodes.map((node) => [node.id, node]));
-  const adjacency = new Map<string, Set<string>>();
-  const degree = new Map<string, number>();
-  const laneIndex = new Map(LANE_DEFINITIONS.map((lane, index) => [lane.id, index]));
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+  
+  // Top to Bottom layout, with generous spacing
+  dagreGraph.setGraph({ rankdir: 'TB', nodesep: 150, edgesep: 50, ranksep: 180 });
 
+  // Map node sizes based on their type to center them nicely
   inputNodes.forEach((node) => {
-    adjacency.set(node.id, new Set());
-    degree.set(node.id, 0);
+    const isKingpin = node.data?.isKingpin === true;
+    const isVictim = normalizeEntityType(node.data) === "VICTIM";
+    const size = isKingpin ? 42 : isVictim ? 32 : 36;
+    // adding extra width height for labels
+    dagreGraph.setNode(node.id, { width: size + 150, height: size + 50 });
   });
 
   inputEdges.forEach((edge) => {
-    if (!nodeById.has(edge.source) || !nodeById.has(edge.target)) return;
-    adjacency.get(edge.source)?.add(edge.target);
-    adjacency.get(edge.target)?.add(edge.source);
-    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
-    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+    dagreGraph.setEdge(edge.source, edge.target);
   });
 
-  const visited = new Set<string>();
-  const components: any[][] = [];
+  dagre.layout(dagreGraph);
 
-  inputNodes.forEach((node) => {
-    if (visited.has(node.id)) return;
-    const queue = [node.id];
-    const component: any[] = [];
-    visited.add(node.id);
+  return inputNodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    const isKingpin = node.data?.isKingpin === true;
+    const isVictim = normalizeEntityType(node.data) === "VICTIM";
+    const size = isKingpin ? 42 : isVictim ? 32 : 36;
 
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      const currentNode = nodeById.get(currentId);
-      if (currentNode) component.push(currentNode);
-
-      adjacency.get(currentId)?.forEach((nextId) => {
-        if (!visited.has(nextId)) {
-          visited.add(nextId);
-          queue.push(nextId);
-        }
-      });
-    }
-
-    components.push(component);
-  });
-
-  components.sort((a, b) => b.length - a.length);
-
-  let yOffset = 0;
-  const positioned = new Map<string, any>();
-  const verticalGap = 136;
-  const componentGap = 220;
-
-  components.forEach((component) => {
-    const lanes = new Map<string, any[]>();
-    LANE_DEFINITIONS.forEach((lane) => lanes.set(lane.id, []));
-
-    component.forEach((node) => {
-      lanes.get(getLaneId(node))?.push(node);
-    });
-
-    const nodeLane = new Map(component.map((node) => [node.id, getLaneId(node)]));
-    const neighborScore = (node: any) => {
-      const neighbors = Array.from(adjacency.get(node.id) ?? []);
-      if (neighbors.length === 0) return 999;
-      const related = neighbors
-        .map((id) => {
-          const lane = nodeLane.get(id);
-          return lane === undefined ? undefined : laneIndex.get(lane);
-        })
-        .filter((value): value is number => value !== undefined);
-
-      if (related.length === 0) return 999;
-      return related.reduce((sum, value) => sum + value, 0) / related.length;
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - (size + 150) / 2,
+        y: nodeWithPosition.y - (size + 50) / 2,
+      },
     };
-
-    lanes.forEach((laneNodes) => {
-      laneNodes.sort((a, b) => {
-        const scoreDelta = neighborScore(a) - neighborScore(b);
-        if (scoreDelta !== 0) return scoreDelta;
-        const degreeDelta = (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0);
-        if (degreeDelta !== 0) return degreeDelta;
-        return getNodeLabel(a).localeCompare(getNodeLabel(b));
-      });
-    });
-
-    const largestLane = Math.max(1, ...Array.from(lanes.values()).map((laneNodes) => laneNodes.length));
-    const componentHeight = Math.max(320, (largestLane - 1) * verticalGap + 190);
-
-    LANE_DEFINITIONS.forEach((lane) => {
-      const laneNodes = lanes.get(lane.id) ?? [];
-      const laneHeight = (laneNodes.length - 1) * verticalGap;
-      const startY = yOffset + componentHeight / 2 - laneHeight / 2;
-
-      laneNodes.forEach((node, index) => {
-        const type = normalizeEntityType(node.data);
-        const isAnchor = node.data?.isKingpin || type === "CLUSTER" || (degree.get(node.id) ?? 0) >= 3;
-        const importanceOffset = isAnchor ? -42 : 0;
-
-        positioned.set(node.id, {
-          ...node,
-          position: {
-            x: lane.x,
-            y: startY + index * verticalGap + importanceOffset,
-          },
-          data: {
-            ...node.data,
-            laneLabel: lane.label,
-            connections: node.data?.connections ?? degree.get(node.id) ?? 0,
-          },
-        });
-      });
-    });
-
-    yOffset += componentHeight + componentGap;
   });
-
-  return inputNodes.map((node) => positioned.get(node.id) ?? node);
 }
 
 function GraphLaneGuide() {
@@ -491,7 +400,7 @@ function GraphContent() {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showLegend, setShowLegend] = useState(true);
+  const [showOverview, setShowOverview] = useState(true);
   const [showNodeLabels, setShowNodeLabels] = useState(true);
   const [showEdgeLabels, setShowEdgeLabels] = useState(false);
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
@@ -896,12 +805,16 @@ function GraphContent() {
           )}
         </AnimatePresence>
 
-        <GraphOverviewPanel
-          nodes={nodes}
-          edges={edges}
-          searchTerm={searchTerm}
-          selectedNode={selectedNode}
-        />
+        <AnimatePresence>
+          {showOverview && (
+            <GraphOverviewPanel
+              nodes={nodes}
+              edges={edges}
+              searchTerm={searchTerm}
+              selectedNode={selectedNode}
+            />
+          )}
+        </AnimatePresence>
         <GraphLaneGuide />
 
         <ReactFlow
@@ -932,63 +845,12 @@ function GraphContent() {
 
         {/* Legend toggle */}
         <button
-          onClick={() => setShowLegend(v => !v)}
+          onClick={() => setShowOverview(v => !v)}
           className="absolute bottom-8 left-6 flex items-center gap-2 px-4 py-2 bg-[#0d0d0d]/95 backdrop-blur border border-white/10 rounded-xl text-[10px] font-mono tracking-widest text-white/50 hover:text-[#34d399] hover:border-[#34d399]/30 transition-all z-40"
         >
           <Network size={12} />
-          {showLegend ? "Hide" : "Show"} Legend
+          {showOverview ? "Hide" : "Show"} Overview
         </button>
-
-        {/* Legend panel */}
-        <AnimatePresence>
-          {showLegend && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="absolute bottom-20 left-6 w-52 bg-[#0d0d0d]/98 backdrop-blur-2xl border border-white/8 rounded-2xl overflow-hidden z-40 shadow-2xl"
-            >
-              <div className="p-3 border-b border-white/5">
-                <span className="text-[9px] font-mono tracking-widest text-[#34d399] uppercase flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] shadow-[0_0_6px_#34d399]" />
-                  Node Legend
-                </span>
-              </div>
-              <div className="p-3 space-y-2">
-                {Object.entries(NODE_META).map(([type, meta]) => {
-                  const Icon = meta.icon;
-                  return (
-                    <div key={type} className="flex items-center gap-2.5">
-                      <div
-                        style={{ background: meta.bg + "33", border: `1px solid ${meta.bg}55` }}
-                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                      >
-                        <Icon size={10} style={{ color: meta.bg }} />
-                      </div>
-                      <span className="text-[10px] text-white/60 font-mono">{meta.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="p-3 border-t border-white/5 space-y-1.5">
-                {[
-                  { l: "Direct call", dash: false, c: "#34d399" },
-                  { l: "Transfer / UPI", dash: true, c: "#34d399" },
-                  { l: "Contact", dash: true, c: "#60a5fa" },
-                  { l: "Crypto", dash: true, c: "#facc15" },
-                ].map(({ l, dash, c }) => (
-                  <div key={l} className="flex items-center gap-2.5">
-                    <div className="w-5 flex items-center">
-                      <div style={{ borderColor: c, borderStyle: dash ? "dashed" : "solid" }}
-                        className="w-full border-t" />
-                    </div>
-                    <span className="text-[10px] text-white/50 font-mono">{l}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Node detail panel */}
         <AnimatePresence>
