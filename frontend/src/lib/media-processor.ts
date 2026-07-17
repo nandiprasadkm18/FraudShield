@@ -13,9 +13,9 @@ export async function transcribeAudio(arrayBuffer: ArrayBuffer, filename: string
 
     const transcription = await groq.audio.transcriptions.create({
       file: file,
-      model: "whisper-large-v3",
+      model: "whisper-large-v3-turbo",
       prompt: "The audio might contain Hindi, English, or mixed languages discussing scams, fraud, money, threats, or cybercrime.",
-      response_format: "json",
+      response_format: "verbose_json",
       temperature: 0.0,
     });
     
@@ -31,18 +31,23 @@ export async function transcribeAudio(arrayBuffer: ArrayBuffer, filename: string
  * @param imageUrl URL to the image (e.g. from Telegram getFileLink)
  */
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
-  throw new Error("extractTextFromImage is no longer implemented using URL fetch, please use processImageWithGroq");
-}
-
-export async function processImageWithGroq(file: File) {
   try {
-    const arrayBuffer = await file.arrayBuffer();
+    // 1. Fetch the image from the provided URL (Telegram file link)
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    
+    // 2. Convert to Base64
+    const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const base64Image = buffer.toString('base64');
     
-    const mimeType = file.type || "image/jpeg";
+    // 3. Construct Data URL
+    const mimeType = response.headers.get("content-type") || "image/jpeg";
     const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
+    // 4. Send to Groq Vision Model
     const completion = await groq.chat.completions.create({
       model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: [
@@ -72,3 +77,5 @@ export async function processImageWithGroq(file: File) {
     throw new Error("Failed to process image.");
   }
 }
+
+// Timestamp force update

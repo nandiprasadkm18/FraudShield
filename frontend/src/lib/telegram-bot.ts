@@ -92,17 +92,38 @@ bot.command("number", async (ctx) => {
 
 // ── Message Handlers ─────────────────────────────────────────────────────────
 
-// Voice Messages
-bot.on(message("voice"), async (ctx) => {
+// Voice and Audio Messages
+bot.on([message("voice"), message("audio"), message("document")], async (ctx) => {
   try {
-    const msg = await ctx.reply("🎙️ Downloading voice note...");
-    const fileLink = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
+    let fileId: string | undefined;
+    let fileName = "audio.ogg";
+
+    if ("voice" in ctx.message) {
+      fileId = ctx.message.voice.file_id;
+    } else if ("audio" in ctx.message) {
+      fileId = ctx.message.audio.file_id;
+      fileName = ctx.message.audio.file_name || "audio.mp3";
+    } else if ("document" in ctx.message) {
+      const mime = ctx.message.document.mime_type || "";
+      if (mime.startsWith("audio/")) {
+        fileId = ctx.message.document.file_id;
+        fileName = ctx.message.document.file_name || "audio.file";
+      } else {
+        // Ignore non-audio documents
+        return;
+      }
+    }
+
+    if (!fileId) return;
+
+    const msg = await ctx.reply("🎙️ Downloading audio...");
+    const fileLink = await ctx.telegram.getFileLink(fileId);
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "🧠 Transcribing audio via Groq Whisper...");
+    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "🧠 Processing audio...");
     const response = await fetch(fileLink.href);
     const arrayBuffer = await response.arrayBuffer();
     
-    const transcript = await transcribeAudio(arrayBuffer, "voice.ogg");
+    const transcript = await transcribeAudio(arrayBuffer, fileName);
     
     if (!transcript.trim()) {
       return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "Could not extract speech from audio.");
@@ -113,8 +134,8 @@ bot.on(message("voice"), async (ctx) => {
     const analysis = await processFraudAnalysis({ text: transcript, ip: "telegram-bot" });
     await ctx.reply(formatVerdict(analysis), { parse_mode: "HTML" });
   } catch (err) {
-    console.error("Voice processing error:", err);
-    ctx.reply("❌ Failed to process voice message.");
+    console.error("Audio processing error:", err);
+    ctx.reply("❌ Failed to process audio message.");
   }
 });
 
@@ -127,7 +148,7 @@ bot.on(message("photo"), async (ctx) => {
     const photo = ctx.message.photo[ctx.message.photo.length - 1];
     const fileLink = await ctx.telegram.getFileLink(photo.file_id);
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "👁️ Extracting text and context via Llama 3.2 Vision...");
+    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "👁️ Processing image...");
     
     const extractedText = await extractTextFromImage(fileLink.href);
     

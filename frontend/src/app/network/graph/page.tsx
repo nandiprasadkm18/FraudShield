@@ -248,7 +248,7 @@ function GraphOverviewPanel({
   }, [nodes, searchTerm]);
 
   return (
-    <div className="absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur">
+    <div className="absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-bold text-white">Network overview</div>
@@ -261,30 +261,58 @@ function GraphOverviewPanel({
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <div className="mb-3 grid grid-cols-3 gap-2">
         {[
           { label: "Entities", value: nodes.length },
           { label: "Links", value: edges.length },
           { label: searchTerm ? "Matches" : "Shown", value: matchedNodes },
         ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2">
+          <div key={item.label} className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-1.5">
             <div className="text-[9px] font-mono uppercase tracking-widest text-white/40">{item.label}</div>
-            <div className="mt-1 text-lg font-black leading-none text-white">{formatGraphValue(item.value)}</div>
+            <div className="mt-0.5 text-lg font-black leading-none text-white">{formatGraphValue(item.value)}</div>
           </div>
         ))}
       </div>
 
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center gap-2.5">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: row.meta.bg, boxShadow: `0 0 8px ${row.meta.bg}66` }}
-            />
-            <span className="min-w-0 flex-1 truncate text-xs text-white/70">{row.label}</span>
-            <span className="font-mono text-xs font-bold text-white">{formatGraphValue(row.count)}</span>
-          </div>
-        ))}
+      <div className="space-y-1.5">
+        {rows.map((row) => {
+          const Icon = row.meta.icon;
+          return (
+            <div key={row.label} className="flex items-center gap-3">
+              <div
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border"
+                style={{
+                  borderColor: `${row.meta.bg}40`,
+                  backgroundColor: `${row.meta.bg}10`,
+                  color: row.meta.bg,
+                }}
+              >
+                <Icon size={12} strokeWidth={2} />
+              </div>
+              <span className="min-w-0 flex-1 text-xs font-medium text-[#d4d4d4]">{row.label}</span>
+              <span className="font-mono text-xs font-bold text-white">{formatGraphValue(row.count)}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 space-y-1.5 border-t border-white/8 pt-3">
+        <div className="flex items-center gap-3">
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px bg-[#34d399]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Direct call</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#34d399] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Transfer / UPI</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#60a5fa] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Contact</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#facc15] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Crypto</span>
+        </div>
       </div>
 
       <div className="mt-4 border-t border-white/8 pt-3">
@@ -450,18 +478,7 @@ function organizeGraphLayout(inputNodes: any[], inputEdges: any[]) {
 }
 
 function GraphLaneGuide() {
-  return (
-    <div className="pointer-events-none absolute left-[24rem] right-4 top-4 z-20 hidden grid-cols-2 gap-3 xl:grid">
-      {LANE_DEFINITIONS.map((lane, index) => (
-        <div key={lane.id} className="flex items-center gap-2 rounded-xl border border-white/8 bg-[#0d0d0d]/75 px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-white/50 backdrop-blur">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#34d399]/10 text-[#34d399]">
-            {index + 1}
-          </span>
-          {lane.label}
-        </div>
-      ))}
-    </div>
-  );
+  return null;
 }
 
 function GraphContent() {
