@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  /* Cyberpunk Dark Palette */
+  --background: #050505;
+  /* pure dark grey/black */
+  --foreground: #ffffff;
+  /* pure white text for contrast */
+
+  --primary: #34d399;
+  /* neon mint green accent */
+  --primary-glow: rgba(52, 211, 153, 0.3);
+
+  --warning: #f59e0b;
+  /* amber-500 */
+  --critical: #ef4444;
+  /* red-500 */
+  --success: #34d399;
+  /* emerald-500 */
+
+  /* Borders and panels */
+  --panel-border: rgba(255, 255, 255, 0.05);
+  /* subtle white tinted borders */
+  --panel-bg: #0a0a0a;
+  /* dark grey #0a0a0a */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --color-success: var(--success);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+/* Premium Card Design (replacing Glassmorphism) */
+.glass-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 1rem;
+}
+
+/* Soft hover effect for interactive elements */
+.glass-panel-interactive {
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-panel-interactive:hover {
+  background: #111111;
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Graph node animations ── */
+@keyframes node-ping {
+  0%   { box-shadow: 0 0 0 0 rgba(52,211,153,0.8), 0 0 8px rgba(52,211,153,0.6); }
+  70%  { box-shadow: 0 0 0 14px rgba(52,211,153,0), 0 0 20px rgba(52,211,153,0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(52,211,153,0), 0 0 8px rgba(52,211,153,0.4); }
+}
+@keyframes node-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.6), 0 0 12px rgba(52,211,153,0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(52,211,153,0.1), 0 0 24px rgba(52,211,153,0.6); }
+}
+
+/* ── ReactFlow dark-theme overrides ── */
+.react-flow__renderer { background: #050505 !important; }
+.react-flow__pane     { cursor: default !important; }
+.react-flow__attribution { display: none !important; }
+
+.react-flow__node { background: transparent !important; border: none !important; padding: 0 !important; color: #ffffff !important; }
+.react-flow__node.selected > div { outline: none !important; }
+.react-flow__handle { opacity: 0 !important; width: 4px !important; height: 4px !important; }
+
+.react-flow__edge-path { transition: opacity 0.2s; }
+.react-flow__edge:hover .react-flow__edge-path { opacity: 1 !important; }
+
+/* Remove white background from minimap */
+.react-flow__minimap { background: #0a0a0a !important; border: 1px solid rgba(255,255,255,0.05) !important; border-radius: 12px !important; }

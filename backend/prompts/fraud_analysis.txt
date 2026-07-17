@@ -1,0 +1,20 @@
+Analyze the following intercepted communication for fraud:
+Target Phone: {phone}
+
+<user_payload>
+{redacted}
+</user_payload>
+
+You MUST identify which of the redacted placeholders (like <IN_BANK_ACCOUNT_0>, <IN_PHONE_1>) belong to the SCAMMER, as opposed to the victim.
+
+Return a strict JSON object with exactly these keys:
+verdict: SCAM, SUSPICIOUS, BENIGN, INSUFFICIENT_EVIDENCE
+severity: CRITICAL, HIGH, MEDIUM, LOW, NONE
+confidenceScore: float 0-1
+fraudType: string (MUST be EXACTLY ONE of the following: Digital Arrest Scam, KYC Update Scam, Bank Account Verification Scam, Debit Card Scam, Credit Card Scam, UPI Collect Request Scam, Fake Refund Scam, QR Code Scam, Fake Loan Scam, Instant Loan App Scam, Investment Scam, Crypto Investment Scam, Ponzi Scheme Scam, Stock Market Tip Scam, Fake Trading Platform Scam, WhatsApp Job Scam, Work From Home Scam, Part-Time Job Scam, Task Completion Scam, Online Shopping Scam, Fake E-commerce Website Scam, Fake Courier Scam, Parcel Customs Scam, Electricity Bill Scam, Gas Connection Scam, Water Bill Scam, Mobile SIM Upgrade Scam, SIM Swap Scam, Aadhaar Linking Scam, PAN Update Scam, Income Tax Refund Scam, GST Scam, Fake Government Scheme Scam, Scholarship Scam, Fake Police Scam, CBI Impersonation Scam, ED Impersonation Scam, RBI Impersonation Scam, Income Tax Officer Scam, Court Notice Scam, Arrest Warrant Scam, Fake Customer Care Scam, Remote Access App Scam (AnyDesk/TeamViewer), Screen Sharing Scam, OTP Scam, PIN Sharing Scam, CVV Collection Scam, Phishing Email Scam, Smishing (SMS Phishing), Vishing (Voice Phishing), Fake WhatsApp Support Scam, Telegram Investment Scam, Telegram Job Scam, Instagram Verification Scam, Facebook Marketplace Scam, OLX Scam, Matrimonial Scam, Romance Scam, Sextortion Scam, Deepfake Video Scam, AI Voice Clone Scam, Fake Charity Scam, Donation Scam, Lottery Scam, Lucky Draw Scam, Gift Voucher Scam, Fake Cashback Scam, Fake Recharge Scam, Subscription Renewal Scam, Fake Antivirus Scam, Tech Support Scam, Malware Download Scam, Ransomware Scam, Fake APK/App Download Scam, Identity Theft Scam, Account Takeover Scam, Business Email Compromise (BEC), CEO Fraud Scam, Invoice Fraud, Fake Insurance Scam, Fake Visa/Passport Scam, Immigration Scam, Rental Property Scam, Fake Hotel Booking Scam, Travel Package Scam, Charity Crowdfunding Scam, Fake NGO Scam, Employment Verification Scam, Fake Interview Scam, Online Gaming Scam, Gaming Currency Scam, Fake Ticket Booking Scam, Event Ticket Scam, Fake Crypto Wallet Scam, NFT Scam, Pig Butchering Scam, Investment Recovery Scam, Account Recovery Scam, Fake App Update Scam, Social Media Account Verification Scam. Or None if benign)
+tags: list of strings
+reasoning: string
+timeline: list of dicts with 'step' and 'detail'
+escalate: boolean
+scammerEntities: list of strings (the exact placeholders that belong to the scammer)
+financialExposure: integer or null (the monetary amount asked by the scammer in INR, or null if no amount is mentioned)
