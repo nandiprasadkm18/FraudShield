@@ -145,6 +145,13 @@ export async function processFraudAnalysis({
   let threatReportId: string | undefined;
   let legacyReportId: string | undefined;
 
+  if (ip === "telegram-bot") {
+    return {
+      ...output,
+      reportId: "TG-UNLOGGED",
+    };
+  }
+
   // ── 3. Persist everything to PostgreSQL ────────────────────────────────────
   try {
     // 3a. GroqCallLog
