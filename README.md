@@ -4,12 +4,15 @@ FraudShield is an advanced AI-powered fraud investigation and network analysis p
 
 ## 🚀 Key Features
 
-- **Interactive Network Graph Analysis**: Visually track the relationships between scammers, victims, kingpins, devices, bank accounts, and crypto wallets using dynamic React Flow graphs.
-- **Geo-Spatial Threat Mapping**: Pinpoint the physical locations and operational hotspots of threat actors using interactive map views.
-- **AI-Powered Threat Intelligence**: Integrated with Groq to automatically extract entities and insights from unstructured data, citizen reports, and multimedia.
-- **Citizen Reporting Portal**: A dedicated portal for citizens to securely report fraud incidents and submit evidence.
-- **Telegram Bot Integration**: Ingest real-time threat intelligence and reports directly via Telegram.
-- **Comprehensive Dashboards**: Dedicated views for investigating specific entity types (Emails, Websites, UPIs, Crypto, Rings, and Kingpins).
+- **Interactive Network Graph Analysis**: Visually track and investigate relationships between scammers, victims, kingpins, devices, bank accounts, and crypto wallets using dynamic React Flow graphs.
+- **Geo-Spatial Threat Mapping**: Pinpoint the physical locations and operational hotspots of threat actors on interactive Leaflet map views.
+- **AI-Powered Threat Intelligence**: 
+  - **Text & NLP Analysis**: Integrated with Groq LLMs to automatically extract entities and insights from unstructured text and citizen reports.
+  - **Multimedia Processing**: Transcribe scam voice notes via Whisper and extract text/context from screenshots using Llama 3.2 Vision.
+  - **Data Privacy**: Automatic PII (Personally Identifiable Information) anonymization using Microsoft Presidio to protect victim data.
+- **Citizen Reporting Portal**: A dedicated portal for citizens to securely report fraud incidents and submit evidence directly into the system.
+- **Telegram Bot Integration**: Ingest real-time threat intelligence, analyze forwarded voice notes/images, and check number reputations instantly via Telegram.
+- **Comprehensive Dashboards**: Dedicated views for investigating specific entity types including Emails, Websites, UPIs, Crypto Wallets, Devices, Scammers, Rings, and Kingpins.
 
 ## 🛠️ Technology Stack
 
