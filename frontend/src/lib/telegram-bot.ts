@@ -55,7 +55,7 @@ bot.command("help", (ctx) => {
     `<b>Commands:</b>
 /start - Welcome message
 /help - Show this message
-/number <phone> - Check prior intelligence for a number
+/number &lt;phone&gt; - Check prior intelligence for a number
 /status - System status
 
 Just send me text, an image, or a voice note to analyze!`,

@@ -13,9 +13,9 @@ FraudShield is an advanced AI-powered fraud investigation and network analysis p
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Next.js (React), TypeScript, Tailwind CSS, React Flow (for network graphs).
-- **Backend**: Python, FastAPI, SQLAlchemy (SQLite), Alembic (Migrations), WebSockets (real-time updates).
-- **AI & Processing**: Groq API for Large Language Model (LLM) inference, customized media and PDF processors.
+- **Frontend**: Next.js (React), TypeScript, Tailwind CSS, React Flow (for network graphs), Leaflet (for maps), Recharts.
+- **Backend**: Python, FastAPI, WebSockets (real-time updates), Groq API (LLM inference), Microsoft Presidio (PII Anonymization), SpaCy.
+- **Database**: PostgreSQL, SQLAlchemy (Backend ORM), Alembic (Migrations), Prisma (Frontend ORM).
 
 ## 🏁 Getting Started
 
