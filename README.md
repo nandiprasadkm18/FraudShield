@@ -22,6 +22,7 @@ FraudShield is an advanced AI-powered fraud investigation and network analysis p
 ### Prerequisites
 - Node.js (v18+)
 - Python (v3.9+)
+- PostgreSQL (running locally or a remote instance)
 
 ### 1. Backend Setup (FastAPI)
 Navigate to the `backend` directory and set up your Python environment:
@@ -36,6 +37,10 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Create a .env file and configure your keys and database
+# Ensure your DATABASE_URL points to your PostgreSQL database
+# Example: DATABASE_URL="postgresql+asyncpg://postgres:password@localhost:5432/eth_db"
 
 # Run database migrations
 alembic upgrade head
@@ -53,10 +58,23 @@ cd frontend
 # Install dependencies
 npm install
 
+# Copy the .env file from the backend (so the frontend has your keys)
+cp ../backend/.env .env
+
+# Generate Prisma Client (if applicable)
+npx prisma generate
+
 # Start the development server
 npm run dev
 ```
 The frontend will be accessible at [http://localhost:3000](http://localhost:3000).
+
+### 3. Running the Telegram Bot
+To run the Telegram bot, open another terminal, navigate to the `frontend` directory, and start the script:
+```bash
+cd frontend
+npm run telegram-bot
+```
 
 ## 🤝 Contributing
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
