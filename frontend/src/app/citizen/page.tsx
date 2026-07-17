@@ -433,10 +433,13 @@ END:VCARD`;
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing || (!input.trim() && !phone.trim()) || !state}
-              className="bg-[#34d399]/80 hover:bg-[#34d399] text-white px-8 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="relative group overflow-hidden bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_25px_rgba(16,185,129,0.35)] px-8 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:saturate-0 disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:cursor-not-allowed text-sm border border-emerald-400/30"
             >
-              {isAnalyzing ? "Executing Analysis..." : "Assess Risk Vectors"}
-              {!isAnalyzing && <Send size={16} />}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-700 ease-in-out" />
+              <span className="relative z-10 flex items-center gap-2">
+                {isAnalyzing ? "Executing Analysis..." : "Assess Risk Vectors"}
+                {!isAnalyzing && <Send size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />}
+              </span>
             </button>
           </div>
         </motion.div>
