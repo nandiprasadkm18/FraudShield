@@ -4,7 +4,6 @@
   
   **Next-Generation AI Cybercrime Investigation & Network Analysis Platform**
   
-  [![ET Hackathon](https://img.shields.io/badge/ET_Hackathon-2026-34d399?style=for-the-badge&logo=hackthebox)](#)
   [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
   [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
   [![Groq AI](https://img.shields.io/badge/Powered_by-Groq_AI-f55036?style=for-the-badge)](https://groq.com/)
