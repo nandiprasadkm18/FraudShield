@@ -7,6 +7,10 @@ from app.models.domain import Users, Organizations, Orgtype, Userrole, Approvals
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from app.schemas.auth import UserCreate
 from app.core.config import settings
+from app.core.websocket_manager import manager as ws_manager
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AuthService:
     async def register_user(self, db: AsyncSession, user_in: UserCreate) -> Users:
@@ -16,6 +20,11 @@ class AuthService:
         result = await db.execute(select(Users).filter(Users.email == user_in.email))
         if result.scalars().first():
             raise HTTPException(status_code=400, detail="Email already registered")
+            
+        if user_in.phone:
+            phone_result = await db.execute(select(Users).filter(Users.phone == user_in.phone))
+            if phone_result.scalars().first():
+                raise HTTPException(status_code=400, detail="Phone number already registered")
             
         org_id = str(uuid.uuid4())
         new_org = Organizations(
@@ -45,6 +54,22 @@ class AuthService:
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
+        
+        # Broadcast the new user event via WebSocket
+        try:
+            broadcast_payload = {
+                "event": "NEW_USER",
+                "id": new_user.id,
+                "name": new_user.name or new_user.email.split("@")[0],
+                "email": new_user.email,
+                "role": new_user.role.value if hasattr(new_user.role, 'value') else new_user.role,
+                "status": new_user.approvalStatus.value if hasattr(new_user.approvalStatus, 'value') else new_user.approvalStatus,
+                "createdAt": new_user.createdAt.isoformat() + "Z"
+            }
+            await ws_manager.broadcast(broadcast_payload)
+        except Exception as e:
+            logger.error(f"WebSocket broadcast error for NEW_USER: {e}")
+            
         return new_user
 
     async def authenticate_user(self, db: AsyncSession, email: str, password: str) -> tuple[str, str]:

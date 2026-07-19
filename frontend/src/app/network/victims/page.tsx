@@ -24,11 +24,38 @@ export default function VictimsPage() {
         const nodes = data.nodes || [];
         const edges = data.edges || [];
         
-        // The API returns type in lowercase (e.g. "victim") and label as "VICTIM"
-        const victimNodes = nodes.filter((n: any) => n.type === "victim" || n.data?.label === "VICTIM");
+        const allEdges = [...edges];
+        nodes.forEach((n: any) => {
+          if (n.type === "cluster" && n.data?.hidden_edges) {
+            allEdges.push(...n.data.hidden_edges);
+          }
+        });
+
+        let victimNodes: any[] = [];
+        nodes.forEach((n: any) => {
+          if (n.type === "victim" || n.data?.label === "VICTIM") {
+            victimNodes.push(n);
+          } else if (n.type === "cluster" && n.data?.hidden_nodes) {
+            const hiddenVictims = n.data.hidden_nodes.filter((hn: any) => 
+              hn.type === "VICTIM" || hn.label === "VICTIM" || hn.entityType === "VICTIM"
+            );
+            hiddenVictims.forEach((hv: any) => {
+              victimNodes.push({
+                id: hv.id,
+                type: "victim",
+                data: {
+                  ...hv,
+                  label: hv.label || "Victim",
+                  reports: hv.reports || 1,
+                  firstSeen: hv.createdAt
+                }
+              });
+            });
+          }
+        });
         
         const parsedVictims = victimNodes.map((v: any, idx: number) => {
-          const connectedEdges = edges.filter((e: any) => e.source === v.id || e.target === v.id);
+          const connectedEdges = allEdges.filter((e: any) => e.source === v.id || e.target === v.id);
           const dateStr = v.data?.firstSeen ? v.data.firstSeen.split("T")[0] : "Unknown";
           
           return {
@@ -59,9 +86,9 @@ export default function VictimsPage() {
 
   const stats = [
     { label: "TOTAL VICTIMS", value: victims.length.toString(), icon: Users },
-    { label: "TOTAL LOST", value: "₹0", icon: Users },
-    { label: "AVG LOST", value: "₹0", icon: Users },
-    { label: "CITIES", value: "1", icon: Users },
+    { label: "TOTAL LOST", value: "₹0", icon: IndianRupee },
+    { label: "AVG LOST", value: "₹0", icon: Activity },
+    { label: "CITIES", value: "1", icon: MapPin },
   ];
 
   return (

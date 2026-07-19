@@ -11,7 +11,7 @@ class TokenData(BaseModel):
 class UserCreate(BaseModel):
     name: str
     email: str
-    phone: str | None = Field(default=None, pattern=r'^\+[1-9]\d{1,14}$')
+    phone: str | None = Field(default=None)
     password: str
     role: str = "CITIZEN"
 

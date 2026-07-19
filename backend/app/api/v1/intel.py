@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, BackgroundTasks, UploadFile, File, Form
+import base64
 from app.api.deps import require_admin, require_analyst_or_above, get_current_user, rate_limit
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
@@ -20,6 +21,7 @@ class UpdateReportPayload(BaseModel):
     audit: Optional[dict] = None
 from app.models.domain import ThreatReports, PhoneReputations, Channel, NetworkNodes, NetworkEdges, Nodetype, StateFinancialImpact, GeoEvents, Locationsource, CityCoordinates, Users
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from app.api.v1.geo import _STATE_COORDS
 from app.services.network_service import network_service
 from app.services.ai_pipeline import ai_pipeline
@@ -78,6 +80,21 @@ async def get_intel_stream(db: AsyncSession = Depends(get_db), cursor: Optional[
 @router.get("/reports", dependencies=[Depends(require_analyst_or_above)])
 async def get_all_reports(db: AsyncSession = Depends(get_db), cursor: Optional[str] = None, limit: int = 100):
     reports = await threat_repo.get_recent_stream(db, limit=limit, cursor=cursor)
+    
+    user_ids = [r.createdByUserId for r in reports if r.createdByUserId]
+    user_map = {}
+    if user_ids:
+        users_result = await db.execute(select(Users).filter(Users.id.in_(user_ids)))
+        user_map = {u.id: u.name for u in users_result.scalars().all()}
+
+    report_ids = [r.id for r in reports]
+    state_map = {}
+    if report_ids:
+        geo_res = await db.execute(select(GeoEvents).filter(GeoEvents.reportId.in_(report_ids)))
+        for g in geo_res.scalars().all():
+            if g.state:
+                state_map[g.reportId] = g.state
+
     return [{
         "id": r.id,
         "targetPhoneNumber": r.targetPhoneNumber,
@@ -85,7 +102,10 @@ async def get_all_reports(db: AsyncSession = Depends(get_db), cursor: Optional[s
         "verdict": r.verdict.value if r.verdict else "UNKNOWN",
         "severity": r.severity.value if r.severity else "UNKNOWN",
         "createdAt": r.createdAt.isoformat() + "Z",
-        "confidenceScore": r.confidenceScore
+        "confidenceScore": r.confidenceScore,
+        "reporterName": user_map.get(r.createdByUserId, "Citizen"),
+        "state": state_map.get(r.id),
+        "financialExposure": getattr(r, "financialExposure", None)
     } for r in reports]
 
 @router.get("/reports/{report_id}", dependencies=[Depends(require_analyst_or_above)])
@@ -116,6 +136,43 @@ async def get_report_detail(report_id: str, db: AsyncSession = Depends(get_db)):
         },
         "createdAt": report.createdAt.isoformat() + "Z",
     }
+
+@router.post("/media/upload", dependencies=[Depends(rate_limit)])
+async def upload_media(
+    file: UploadFile = File(...),
+    phoneNumber: Optional[str] = Form(None),
+    req: Request = None,
+    background_tasks: BackgroundTasks = None,
+    db: AsyncSession = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    contents = await file.read()
+    content_type = file.content_type
+    
+    extracted_text = ""
+    if content_type.startswith("audio/"):
+        extracted_text = await ai_pipeline.transcribe_audio(contents, file.filename)
+    elif content_type.startswith("image/"):
+        b64 = base64.b64encode(contents).decode("utf-8")
+        extracted_text = await ai_pipeline.extract_text_from_image(b64)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+        
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract text from media")
+        
+    payload = SubmitPayload(
+        text=extracted_text,
+        phoneNumber=phoneNumber,
+        analysisResult=None
+    )
+    
+    result = await submit_intel(payload, req, background_tasks, db, current_user)
+    if isinstance(result, dict):
+        result["id"] = result.get("threatReportId")
+        result["analysisOutput"] = result.get("analysis")
+        result["extractedText"] = extracted_text
+    return result
 
 @router.post("/submit", dependencies=[Depends(rate_limit)])
 async def submit_intel(
@@ -167,12 +224,20 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
     
     db_nodes = nodes_db.scalars().all()
     
+    report_victims = {}
+    for n in db_nodes:
+        n_type = getattr(n.entityType, "value", str(n.entityType)).replace("Nodetype.", "")
+        if n_type == "VICTIM":
+            report_victims[n.reportId] = n.label
+
     merged_nodes = {}
     id_mapping = {}
     
     for n in db_nodes:
         n_type = getattr(n.entityType, "value", str(n.entityType)).replace("Nodetype.", "")
         key = (n_type, n.entityValue)
+        victim_name = report_victims.get(n.reportId)
+        
         if key not in merged_nodes:
             merged_nodes[key] = {
                 "id": n.id,
@@ -181,12 +246,16 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
                     "type": n_type,
                     "value": n.entityValue,
                     "createdAt": n.createdAt.isoformat() if n.createdAt else None,
-                    "reports": 1
+                    "reports": 1,
+                    "reportedBy": [victim_name] if victim_name else [],
+                    "metadata": getattr(n, "details", None)
                 }
             }
         else:
             merged_nodes[key]["data"]["reports"] += 1
-            
+            if victim_name and victim_name not in merged_nodes[key]["data"]["reportedBy"]:
+                merged_nodes[key]["data"]["reportedBy"].append(victim_name)
+                
         id_mapping[n.id] = merged_nodes[key]["id"]
         
     phones = [k[1] for k in merged_nodes.keys() if k[0] == "PHONE_NUMBER"]
@@ -207,6 +276,7 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
         tgt = id_mapping.get(e.targetNodeId)
         if src and tgt and src != tgt:
             edge_list.append({"source": src, "target": tgt, "data": {"weight": e.weight}})
+
     
     if not node_list:
         return {"nodes": [], "edges": [], "total": 0, "stats": {}}
@@ -255,7 +325,10 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
         # Format label (remove UUIDs)
         display_label = n_label
         if n_type == "CLUSTER":
-            display_label = "Fraud Ring"
+            if n_label == "VICTIM_CLUSTER":
+                display_label = "Targeted Victims"
+            else:
+                display_label = "Fraud Ring"
         elif n_type == "VICTIM" or n_label == "VICTIM":
             if n_label and n_label != "VICTIM":
                 display_label = f"{n_label} [VICTIM]"
@@ -267,8 +340,23 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
             
         pos = n.get("position", {"x": 0, "y": 0})
             
-        risk_level = "CRITICAL" if is_kingpin else ("HIGH" if n_type == "CLUSTER" else "MEDIUM")
-        risk_score = round(n.get("pagerank", 0) * 100, 1)
+        base_pagerank = n.get("pagerank", 0) * 100
+        reports_count = n.get("reports", 1)
+        connections_count = n.get("in_degree", 0) + n.get("out_degree", 0)
+        
+        report_score = min(60, reports_count * 20)
+        conn_score = min(40, connections_count * 10)
+        
+        risk_score = min(99.0, base_pagerank + report_score + conn_score)
+        
+        if risk_score >= 80:
+            risk_level = "CRITICAL"
+        elif risk_score >= 60:
+            risk_level = "HIGH"
+        elif risk_score >= 40:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
         
         if n_type == "VICTIM" or "VICTIM" in str(n_label).upper():
             risk_level = "NONE"
@@ -278,11 +366,16 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
             risk_level = rep.dominantSeverity.value if hasattr(rep.dominantSeverity, "value") else str(rep.dominantSeverity)
             risk_score = float(rep.aggregatedRiskScore)
 
-        if is_kingpin and risk_score < 95:
-            risk_score = 95.0 + (risk_score / 20)  # Boost to 95-100 range
+        if is_kingpin:
+            risk_level = "CRITICAL"
+            if risk_score < 95:
+                risk_score = 95.0 + (risk_score / 20)  # Boost to 95-100 range
             
-        if n_type == "CLUSTER" and risk_score < 75:
-            risk_score = 75.0 + (risk_score / 4) # Boost to 75-100 range
+        if n_type == "CLUSTER":
+            if risk_level not in ("CRITICAL", "HIGH"):
+                risk_level = "HIGH"
+            if risk_score < 75:
+                risk_score = 75.0 + (risk_score / 4) # Boost to 75-100 range
         
         # Round it off for display
         risk_score = round(risk_score, 1)
@@ -300,10 +393,12 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
                 "riskLevel": risk_level,
                 "riskScore": risk_score,
                 "reports": n.get("reports", 1),
+                "reportedBy": n.get("reportedBy", []),
                 "connections": n.get("in_degree", 0) + n.get("out_degree", 0),
                 "firstSeen": n.get("createdAt"),
                 "lastSeen": n.get("createdAt"),
                 "entityType": n_type,
+                "metadata": n.get("metadata"),
                 "hidden_nodes": n.get("hidden_nodes"),
                 "hidden_edges": n.get("hidden_edges")
             }
@@ -522,10 +617,27 @@ async def get_reports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/export/incident/{id}")
 async def export_incident(id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ThreatReports).where(ThreatReports.id == id))
+    result = await db.execute(
+        select(ThreatReports)
+        .options(selectinload(ThreatReports.users))
+        .where(ThreatReports.id == id)
+    )
     report = result.scalars().first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+        
+    nodes_result = await db.execute(
+        select(NetworkNodes).where(NetworkNodes.reportId == id, NetworkNodes.entityType != Nodetype.VICTIM)
+    )
+    nodes = nodes_result.scalars().all()
+    
+    extracted = []
+    for n in nodes:
+        extracted.append({
+            "type": n.entityType.value if hasattr(n.entityType, "value") else str(n.entityType).replace("Nodetype.", ""),
+            "value": n.entityValue,
+            "score": "High"
+        })
         
     analysis_data = {
         "verdict": report.verdict.value if report.verdict else "UNKNOWN",
@@ -534,7 +646,12 @@ async def export_incident(id: str, db: AsyncSession = Depends(get_db)):
         "fraudType": report.fraudType,
         "timeline": report.timelineSteps,
         "reasoning": report.reasoning,
-        "extracted_scammer_entities": [] # Would need joining NetworkNodes to populate
+        "payloadText": report.payloadText,
+        "reportedBy": {
+            "name": report.users.name if report.users and report.users.name else "Anonymous",
+            "phone": report.users.phone if report.users and report.users.phone else "Unknown"
+        },
+        "extracted_scammer_entities": extracted
     }
     pdf_bytes = pdf_service.generate_report_pdf(report.id, analysis_data)
     
@@ -590,7 +707,6 @@ async def get_entity_summary(id: str, db: AsyncSession = Depends(get_db)):
     
     v_count = len([e for e in edges if "victim" in e.sourceNodeId.lower() or "victim" in e.targetNodeId.lower()])
     
-    summary_text = f"This entity ({node_data.entityValue}) is part of a fraud ring containing {len(edges)} connections. The primary entity appears in {max(1, len(edges)-v_count)} reports. It is directly linked to {v_count} victims. The estimated financial exposure exceeds ₹12 Lakhs.\n\nRecommended actions:\n- Freeze linked accounts\n- Notify banks\n- Request CDR\n- Escalate to I4C"
     # Fetch all reports associated with this entity value
     reports_q = await db.execute(
         select(ThreatReports)
@@ -601,13 +717,47 @@ async def get_entity_summary(id: str, db: AsyncSession = Depends(get_db)):
         )
     )
     linked_reports = reports_q.scalars().unique().all()
+    
+    total_exposure = sum((getattr(r, "financialExposure", 0) or 0) for r in linked_reports)
+    exposure_str = f"₹{total_exposure:,.2f}" if total_exposure > 0 else "Unknown"
+
+    from app.services.ai_pipeline import AIPipelineService
+    ai_service = AIPipelineService()
+    summary_text = await ai_service.generate_entity_summary(
+        entity_type=getattr(node_data.entityType, "value", str(node_data.entityType)).replace("Nodetype.", ""),
+        entity_value=node_data.entityValue,
+        connections=len(edges),
+        reports=max(1, len(edges)-v_count),
+        victims=v_count,
+        financial_exposure=exposure_str
+    )
+    if not summary_text or "unavailable" in summary_text.lower():
+        summary_text = f"This entity ({node_data.entityValue}) is part of a fraud ring containing {len(edges)} connections. The primary entity appears in {max(1, len(edges)-v_count)} reports. It is directly linked to {v_count} victims. The estimated financial exposure is {exposure_str}.\n\nRecommended actions:\n- Freeze linked accounts\n- Notify banks\n- Request CDR\n- Escalate to I4C"
+
+    
+    # For each report, find the victim node
+    report_ids = [r.id for r in linked_reports]
+    victim_map = {}
+    if report_ids:
+        from app.models.domain import Nodetype
+        victim_nodes_q = await db.execute(
+            select(NetworkNodes)
+            .where(
+                NetworkNodes.reportId.in_(report_ids),
+                NetworkNodes.entityType == Nodetype.VICTIM
+            )
+        )
+        victim_nodes = victim_nodes_q.scalars().all()
+        victim_map = {n.reportId: n.label for n in victim_nodes}
+
     reports_data = [{
         "id": r.id,
         "fraudType": r.fraudType,
         "severity": r.severity.value if hasattr(r.severity, "value") else str(r.severity),
         "verdict": r.verdict.value if hasattr(r.verdict, "value") else str(r.verdict),
         "createdAt": r.createdAt.isoformat() + "Z" if r.createdAt else None,
-        "targetPhoneNumber": r.targetPhoneNumber
+        "targetPhoneNumber": r.targetPhoneNumber,
+        "victim": victim_map.get(r.id, "Unknown Victim")
     } for r in linked_reports]
     
     return {

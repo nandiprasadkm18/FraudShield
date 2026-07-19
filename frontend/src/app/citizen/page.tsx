@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   ShieldAlert, Send, ShieldCheck, AlertTriangle, AlertCircle,
   Search, Mic, Image as ImageIcon, PhoneCall, PhoneOff,
-  Flag, FileText, Share2, CheckCircle2,
+  Flag, FileText, Share2, CheckCircle2, EyeOff,
   Fingerprint, Database, Users, Activity, Banknote, Crosshair,
   MapPin, ThumbsUp, ThumbsDown, TrendingUp
 } from "lucide-react";
@@ -26,6 +26,7 @@ export default function CitizenShield() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [reportId, setReportId] = useState<string | null>(null);
@@ -55,22 +56,37 @@ export default function CitizenShield() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("type", type);
+      if (phone.trim()) formData.append("phoneNumber", phone.trim());
 
+      const token = localStorage.getItem("token");
       const res = await fetch("/api/parse-media", {
         method: "POST",
         body: formData,
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       const data = await res.json();
-      if (res.ok && !data.error) {
-        if (data.text) {
-          setInput((prev) => (prev ? prev + "\n" + data.text : data.text));
+      if (res.ok) {
+        const extractedText = data.text || "";
+        const extractedPhone = data.sender_number || "";
+
+        if (extractedText) setInput(extractedText);
+        if (extractedPhone) {
+          // Keep only digits for the phone input, max 10 digits
+          const cleanedPhone = extractedPhone.replace(/\D/g, '').slice(-10);
+          if (cleanedPhone) setPhone(cleanedPhone);
         }
-        if (data.sender_number) {
-          setPhone(data.sender_number.replace(/[^\d+]/g, ''));
-        }
+        
+        // Reset analysis states since we only parsed media, not analyzed/submitted
+        setResult(null);
+        setReportId(null);
+        setThreatReportId(null);
+        setFeedbackGiven(null);
+        setPhoneRep(null);
+        setRelatedReports([]);
+        setIsSubmitted(false);
       } else {
-        alert(data.error || "Failed to process media");
+        alert(data.detail || data.error || "Failed to process media");
       }
     } catch (err: any) {
       alert("Error uploading file: " + err.message);
@@ -82,6 +98,10 @@ export default function CitizenShield() {
 
   const handleAnalyze = async () => {
     if (!input.trim() && !phone.trim()) return;
+    if (phone && phone.length !== 10) {
+      alert("Phone number must be exactly 10 digits");
+      return;
+    }
 
     setIsAnalyzing(true);
     setResult(null);
@@ -170,6 +190,7 @@ export default function CitizenShield() {
           city: city || undefined,
           state: state || undefined,
           pincode: pincode || undefined,
+          isAnonymous: isAnonymous,
           analysisResult: result,
         }),
       });
@@ -181,7 +202,8 @@ export default function CitizenShield() {
           setThreatReportId(data.threatReportId);
         }
       } else {
-        alert("Failed to submit: " + (data.error || "Unknown error"));
+        console.error("Submit failed:", res.status, data);
+        alert("Failed to submit: " + (data.detail || data.error || JSON.stringify(data) || "Unknown error"));
       }
     } catch (err: any) {
       alert("Error submitting incident: " + err.message);
@@ -200,7 +222,7 @@ export default function CitizenShield() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `raksha-setu-incident-${reportId}.pdf`;
+      a.download = `fraudshield-ai-incident-${reportId}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -253,7 +275,7 @@ END:VCARD`;
 
   const handleShare = async () => {
     if (!result) return;
-    const text = `WARNING: I just ran a threat analysis on ${phone || "this number"} via Raksha Setu and it was flagged as ${result.riskLevel?.toUpperCase()} risk for ${result.fraudType || "fraud"}. Please do not answer calls or messages from this number!`;
+    const text = `WARNING: I just ran a threat analysis on ${phone || "this number"} via FraudShield AI and it was flagged as ${result.riskLevel?.toUpperCase()} risk for ${result.fraudType || "fraud"}. Please do not answer calls or messages from this number!`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -319,8 +341,8 @@ END:VCARD`;
               <input
                 type="text"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
+                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="9876543210"
                 className="w-full bg-[#111111] border border-white/5 rounded-xl p-3.5 outline-none focus:border-[#34d399]/50 text-white transition-colors font-mono text-sm"
                 suppressHydrationWarning
               />
@@ -426,10 +448,7 @@ END:VCARD`;
             />
           </div>
 
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-[10px] text-zinc-600 flex items-center gap-1.5 font-mono uppercase tracking-widest font-bold">
-              <Search size={12} className="text-[#34d399]" /> GPT OSS 120B Cognitive Engine
-            </span>
+          <div className="flex justify-end items-center mt-4">
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing || (!input.trim() && !phone.trim()) || !state}
@@ -670,6 +689,29 @@ END:VCARD`;
                         )}
                       </div>
                     ))}
+
+                    {/* Anonymous Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl mt-2 mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={clsx("w-8 h-8 rounded-full flex items-center justify-center transition-colors", isAnonymous ? "bg-[#34d399]/20 text-[#34d399]" : "bg-black/50 text-zinc-500")}>
+                          <EyeOff size={16} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-white mb-0.5">Report Anonymously</div>
+                          <div className="text-[9px] text-zinc-500 font-mono leading-tight">Your name and phone won't be recorded<br/>but location will be.</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsAnonymous(!isAnonymous)}
+                        disabled={isSubmitted || isSubmitting}
+                        className={clsx(
+                          "relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                          isAnonymous ? "bg-[#34d399]" : "bg-zinc-700"
+                        )}
+                      >
+                        <span className={clsx("inline-block h-4 w-4 transform rounded-full bg-white transition-transform", isAnonymous ? "translate-x-6" : "translate-x-1")} />
+                      </button>
+                    </div>
 
                     <button
                       onClick={handleSubmitIncident}

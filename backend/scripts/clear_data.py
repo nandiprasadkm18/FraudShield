@@ -1,47 +1,33 @@
 import asyncio
-import sys
 import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.models.domain import (
-    ThreatReports, NetworkEdges, NetworkNodes, GeoEvents, 
-    VerdictFeedback, PhoneReputations, NumberReputations, GroqCallLogs
-)
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy import delete
-
-engine = create_async_engine('postgresql+asyncpg://postgres:nandi@localhost:5432/eth_db')
-SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from app.database.session import AsyncSessionLocal
+from sqlalchemy import text
 
 async def clear_data():
-    async with SessionLocal() as db:
-        print("Clearing NetworkEdges...")
-        await db.execute(delete(NetworkEdges))
+    async with AsyncSessionLocal() as db:
+        print("Clearing data...")
+        # Clear child tables first
+        await db.execute(text("DELETE FROM network_edges;"))
+        await db.execute(text("DELETE FROM network_nodes;"))
+        await db.execute(text("DELETE FROM geo_events;"))
+        await db.execute(text("DELETE FROM verdict_feedback;"))
         
-        print("Clearing NetworkNodes...")
-        await db.execute(delete(NetworkNodes))
+        # Clear main reports table
+        await db.execute(text("DELETE FROM threat_reports;"))
         
-        print("Clearing GeoEvents...")
-        await db.execute(delete(GeoEvents))
+        # Clear reputations
+        await db.execute(text("DELETE FROM phone_reputations;"))
+        await db.execute(text("DELETE FROM number_reputations;"))
         
-        print("Clearing VerdictFeedback...")
-        await db.execute(delete(VerdictFeedback))
-        
-        print("Clearing ThreatReports...")
-        await db.execute(delete(ThreatReports))
-        
-        print("Clearing PhoneReputations...")
-        await db.execute(delete(PhoneReputations))
-        
-        print("Clearing NumberReputations...")
-        await db.execute(delete(NumberReputations))
-        
-        print("Clearing GroqCallLogs...")
-        await db.execute(delete(GroqCallLogs))
+        # Clear logs
+        await db.execute(text("DELETE FROM groq_call_logs;"))
         
         await db.commit()
-        print("Data cleared successfully!")
+        print("All threat reports and related network data have been successfully cleared.")
 
 if __name__ == "__main__":
     asyncio.run(clear_data())

@@ -44,7 +44,8 @@ export function GenericEntityPage({ title, entityType, icon: Icon, statsConfig }
             riskScore: n.data?.riskScore || 50,
             community: n.data?.community,
             links: connectedEdges.length,
-            reports: n.data?.reports || 1
+            reports: n.data?.reports || 1,
+            metadata: n.data?.metadata || null
           };
         });
 
@@ -142,13 +143,40 @@ export function GenericEntityPage({ title, entityType, icon: Icon, statsConfig }
 
               <div className="space-y-3 mb-6 flex-1">
                 <div className="grid grid-cols-[80px_1fr] items-center text-xs">
-                  <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px]"><Icon size={12} /> VALUE</div>
-                  <div className="font-bold text-white font-mono truncate">{entity.value}</div>
+                  <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px]"><Icon size={12} /> {entityType === 'BANK_ACCOUNT' ? 'ACCOUNT NO' : 'VALUE'}</div>
+                  <div className="font-bold text-white font-mono truncate">{entity.value || '---------'}</div>
                 </div>
                 <div className="grid grid-cols-[80px_1fr] items-center text-xs">
                   <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px]"><Activity size={12} /> RISK</div>
                   <div className="font-bold text-white font-mono">{entity.riskScore}%</div>
                 </div>
+                {entityType === 'BANK_ACCOUNT' ? (
+                  <>
+                    <div className="grid grid-cols-[80px_1fr] items-center text-xs">
+                      <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px] uppercase"><Activity size={12} className="opacity-0"/> BANK</div>
+                      <div className="font-bold text-[#34d399] font-mono truncate">{entity.metadata?.Bank || '---------'}</div>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] items-center text-xs">
+                      <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px] uppercase"><Activity size={12} className="opacity-0"/> IFSC</div>
+                      <div className="font-bold text-[#34d399] font-mono truncate">{entity.metadata?.IFSC || '---------'}</div>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] items-center text-xs">
+                      <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px] uppercase"><Activity size={12} className="opacity-0"/> BRANCH</div>
+                      <div className="font-bold text-[#34d399] font-mono truncate">{entity.metadata?.Branch || '---------'}</div>
+                    </div>
+                    <div className="grid grid-cols-[80px_1fr] items-center text-xs">
+                      <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px] uppercase"><Activity size={12} className="opacity-0"/> HOLDER</div>
+                      <div className="font-bold text-[#34d399] font-mono truncate">{entity.metadata?.Holder || '---------'}</div>
+                    </div>
+                  </>
+                ) : (
+                  entity.metadata && Object.entries(entity.metadata).map(([k, v]) => (
+                    <div key={k} className="grid grid-cols-[80px_1fr] items-center text-xs">
+                      <div className="flex items-center gap-2 text-zinc-500 font-mono tracking-widest text-[9px] uppercase"><Activity size={12} className="opacity-0"/> {k.replace(/([A-Z])/g, ' $1').trim()}</div>
+                      <div className="font-bold text-[#34d399] font-mono truncate">{String(v)}</div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">

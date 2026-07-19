@@ -1,8 +1,5 @@
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
-import { processFraudAnalysis } from "@/lib/fraud-analyzer";
-import { transcribeAudio, extractTextFromImage } from "@/lib/media-processor";
-import { prisma } from "@/lib/prisma";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -37,15 +34,13 @@ ${(analysis.tags || []).map((t: string) => `• ${t}`).join("\n")}
 
 <b>Recommended Actions:</b>
 ${(analysis.timeline || []).map((t: any) => `• ${t.detail}`).join("\n")}
-
-<i>Report ID: ${analysis.reportId || "N/A"}</i>
   `.trim();
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 bot.command("start", (ctx) => {
   ctx.reply(
-    `🛡️ <b>Welcome to Citizen Shield (Raksha Setu)</b>\n\nI am your real-time scam identification assistant.\n\nYou can:\n- Paste a suspicious SMS/WhatsApp message\n- Upload a screenshot of a conversation\n- Forward a Voice Note from a scammer\n- Look up a number using /number +91...\n\nUse /help for more commands.`,
+    `🛡️ <b>Welcome to Citizen Shield (FraudShield AI)</b>\n\nI am your real-time scam identification assistant.\n\nYou can:\n- Paste a suspicious SMS/WhatsApp message\n- Upload a screenshot of a conversation\n- Forward a Voice Note from a scammer\n\nUse /help for more commands.`,
     { parse_mode: "HTML" }
   );
 });
@@ -55,7 +50,6 @@ bot.command("help", (ctx) => {
     `<b>Commands:</b>
 /start - Welcome message
 /help - Show this message
-/number &lt;phone&gt; - Check prior intelligence for a number
 /status - System status
 
 Just send me text, an image, or a voice note to analyze!`,
@@ -67,72 +61,50 @@ bot.command("status", (ctx) => {
   ctx.reply(`✅ <b>Citizen Shield Systems Operational</b>\nGroq AI Pipeline: Online\nDatabase: Connected`, { parse_mode: "HTML" });
 });
 
-bot.command("number", async (ctx) => {
-  const parts = ctx.message.text.split(" ");
-  if (parts.length < 2) {
-    return ctx.reply("Please provide a phone number. Example: /number +918765432109");
-  }
-
-  const phone = parts[1].replace(/\s/g, "");
-  
-  try {
-    const rep = await prisma.phoneReputation.findUnique({ where: { phoneNumber: phone } });
-    if (!rep) {
-      return ctx.reply(`No prior intelligence exists for ${phone}.`);
-    }
-
-    ctx.reply(
-      `🔍 <b>Intelligence for ${phone}</b>\n\nReports: ${rep.reportCount}\nFirst Reported: ${rep.lastReportedAt.toDateString()}\nKnown Scam Categories: ${rep.dominantFraudType || "Various"}`,
-      { parse_mode: "HTML" }
-    );
-  } catch (err) {
-    ctx.reply("Failed to query intelligence database.");
-  }
-});
-
 // ── Message Handlers ─────────────────────────────────────────────────────────
 
 // Voice and Audio Messages
 bot.on([message("voice"), message("audio"), message("document")], async (ctx) => {
   try {
     let fileId: string | undefined;
-    let fileName = "audio.ogg";
 
     if ("voice" in ctx.message) {
       fileId = ctx.message.voice.file_id;
     } else if ("audio" in ctx.message) {
       fileId = ctx.message.audio.file_id;
-      fileName = ctx.message.audio.file_name || "audio.mp3";
     } else if ("document" in ctx.message) {
       const mime = ctx.message.document.mime_type || "";
       if (mime.startsWith("audio/")) {
         fileId = ctx.message.document.file_id;
-        fileName = ctx.message.document.file_name || "audio.file";
       } else {
-        // Ignore non-audio documents
         return;
       }
     }
 
     if (!fileId) return;
 
-    const msg = await ctx.reply("🎙️ Downloading audio...");
+    const msg = await ctx.reply("🎙️ Downloading and analyzing audio...");
     const fileLink = await ctx.telegram.getFileLink(fileId);
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "🧠 Processing audio...");
+    // Download file locally to a buffer
     const response = await fetch(fileLink.href);
     const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const blob = new Blob([buffer], { type: "audio/ogg" });
+    const formData = new FormData();
+    formData.append("file", blob, "audio.ogg");
+
+    const res = await fetch("http://127.0.0.1:8000/api/v1/intel/media/upload", {
+      method: "POST",
+      body: formData,
+    });
     
-    const transcript = await transcribeAudio(arrayBuffer, fileName);
-    
-    if (!transcript.trim()) {
-      return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "Could not extract speech from audio.");
+    if (!res.ok) {
+        return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "❌ Failed to process audio.");
     }
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, `📝 <i>Transcript: "${transcript}"</i>\n\n🔍 Analyzing for fraud...`, { parse_mode: "HTML" });
-    
-    const analysis = await processFraudAnalysis({ text: transcript, ip: "telegram-bot" });
-    await ctx.reply(formatVerdict(analysis), { parse_mode: "HTML" });
+    const analysisData = await res.json();
+    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, formatVerdict(analysisData.analysisOutput), { parse_mode: "HTML" });
   } catch (err) {
     console.error("Audio processing error:", err);
     ctx.reply("❌ Failed to process audio message.");
@@ -142,24 +114,29 @@ bot.on([message("voice"), message("audio"), message("document")], async (ctx) =>
 // Photo/Image Messages
 bot.on(message("photo"), async (ctx) => {
   try {
-    const msg = await ctx.reply("📸 Downloading image...");
+    const msg = await ctx.reply("📸 Downloading and analyzing image...");
     
-    // Get highest resolution photo
     const photo = ctx.message.photo[ctx.message.photo.length - 1];
     const fileLink = await ctx.telegram.getFileLink(photo.file_id);
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "👁️ Processing image...");
+    const response = await fetch(fileLink.href);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const blob = new Blob([buffer], { type: "image/jpeg" });
+    const formData = new FormData();
+    formData.append("file", blob, "image.jpg");
+
+    const res = await fetch("http://127.0.0.1:8000/api/v1/intel/media/upload", {
+      method: "POST",
+      body: formData,
+    });
     
-    const extractedText = await extractTextFromImage(fileLink.href);
-    
-    if (!extractedText.trim()) {
-      return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "Could not extract any meaningful text/context from the image.");
+    if (!res.ok) {
+        return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "❌ Failed to process image.");
     }
     
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, `📝 <i>Extracted Context: "${extractedText.slice(0, 200)}..."</i>\n\n🔍 Analyzing for fraud...`, { parse_mode: "HTML" });
-    
-    const analysis = await processFraudAnalysis({ text: extractedText, ip: "telegram-bot" });
-    await ctx.reply(formatVerdict(analysis), { parse_mode: "HTML" });
+    const analysisData = await res.json();
+    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, formatVerdict(analysisData.analysisOutput), { parse_mode: "HTML" });
   } catch (err) {
     console.error("Image processing error:", err);
     ctx.reply("❌ Failed to process image.");
@@ -168,13 +145,23 @@ bot.on(message("photo"), async (ctx) => {
 
 // Text Messages
 bot.on(message("text"), async (ctx) => {
-  // Ignore commands
   if (ctx.message.text.startsWith("/")) return;
 
   try {
     const msg = await ctx.reply("🔍 Analyzing message...");
-    const analysis = await processFraudAnalysis({ text: ctx.message.text, ip: "telegram-bot" });
-    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, formatVerdict(analysis), { parse_mode: "HTML" });
+    
+    const res = await fetch("http://127.0.0.1:8000/api/v1/intel/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: ctx.message.text, phoneNumber: null })
+    });
+    
+    if (!res.ok) {
+        return ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, "❌ Failed to process text.");
+    }
+    
+    const analysisData = await res.json();
+    await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, undefined, formatVerdict(analysisData.analysisOutput), { parse_mode: "HTML" });
   } catch (err) {
     console.error("Text processing error:", err);
     ctx.reply("❌ Failed to process text.");

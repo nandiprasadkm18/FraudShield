@@ -10,13 +10,15 @@ import ReactFlow, {
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
+  getNodesBounds,
+  getViewportForBounds,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
   Phone, User, Landmark, ShieldAlert, Smartphone, Zap,
   Plus, Minus, Maximize, Crosshair, X, Globe, Mail,
   Bitcoin, Activity, Network, Search, RefreshCw, Wifi,
-  Eye, EyeOff, ListFilter, MousePointerClick, Rows3
+  Eye, EyeOff, ListFilter, MousePointerClick, Rows3, Download
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import clsx from "clsx";
@@ -160,6 +162,21 @@ function NodeDetailPanel({ node, onClose }: { node: any; onClose: () => void }) 
           ))}
         </div>
 
+        {/* Reported By */}
+        {node.data?.reportedBy && node.data.reportedBy.length > 0 && (
+          <div className="bg-white/3 p-4 rounded-xl border border-white/5">
+            <div className="text-[10px] font-mono tracking-widest text-white/45 mb-2 uppercase">Reported By</div>
+            <div className="flex flex-col gap-1.5">
+              {node.data.reportedBy.map((victim: string, idx: number) => (
+                <div key={idx} className="text-xs font-mono font-medium text-[#34d399] flex items-center gap-2 break-all">
+                  <User size={12} className="text-[#34d399]/70 shrink-0" />
+                  {victim}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Kingpin badge */}
         {node.data?.isKingpin && (
           <div className="bg-[#34d399]/8 border border-[#34d399]/25 rounded-xl p-4">
@@ -226,10 +243,19 @@ function GraphOverviewPanel({
   selectedNode: any;
 }) {
   const rows = useMemo(() => {
-    const counts = new Map<string, { count: number; meta: ReturnType<typeof getMeta> }>();
+    const counts = new Map<string, { count: number; meta: any }>();
+    
+    // Initialize with all known types
+    const knownTypes = ["VICTIM", "KINGPIN", "PHONE_NUMBER", "BANK_ACCOUNT", "IFSC_CODE", "UPI_ID", "WEBSITE", "TELEGRAM_ID", "CRYPTO_WALLET"];
+    knownTypes.forEach(t => {
+      const isKingpin = t === "KINGPIN";
+      const meta = getMeta(isKingpin ? "PHONE_NUMBER" : t, isKingpin);
+      counts.set(meta.label, { count: 0, meta });
+    });
+
     nodes.forEach((node) => {
       const type = normalizeEntityType(node.data);
-      const isKingpin = node.data?.isKingpin === true;
+      const isKingpin = node.data?.isKingpin;
       const label = getMeta(type, isKingpin).label;
       const current = counts.get(label) ?? { count: 0, meta: getMeta(type, isKingpin) };
       counts.set(label, { ...current, count: current.count + 1 });
@@ -237,7 +263,7 @@ function GraphOverviewPanel({
     return Array.from(counts.entries())
       .map(([label, value]) => ({ label, ...value }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
+      .slice(0, 10);
   }, [nodes]);
 
   const matchedNodes = useMemo(() => {
@@ -249,11 +275,11 @@ function GraphOverviewPanel({
   }, [nodes, searchTerm]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="absolute left-4 top-4 z-30 w-[min(22rem,calc(100%-2rem))] max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur"
+      className="absolute left-4 top-4 bottom-20 z-30 w-[min(22rem,calc(100%-2rem))] overflow-y-auto scrollbar-hide rounded-2xl border border-white/10 bg-[#0d0d0d]/92 p-4 shadow-2xl backdrop-blur"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
@@ -302,22 +328,26 @@ function GraphOverviewPanel({
         })}
       </div>
 
-      <div className="mt-3 space-y-1.5 border-t border-white/8 pt-3">
+      <div className="mt-3 space-y-1.5 border-t border-white/8 pt-3 pb-12">
         <div className="flex items-center gap-3">
-          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px bg-[#34d399]" /></div>
-          <span className="text-xs font-medium text-[#a3a3a3]">Direct call</span>
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full border-t-[1.5px] border-solid border-[#ffffff]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Received Call (Multi-Victim)</span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#34d399] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
-          <span className="text-xs font-medium text-[#a3a3a3]">Transfer / UPI</span>
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full border-t-[1.5px] border-solid border-[#ef4444]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Received Call (Single Victim)</span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#60a5fa] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
-          <span className="text-xs font-medium text-[#a3a3a3]">Contact</span>
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full border-t-[1.5px] border-solid border-[#6366f1]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Called (Phone to Phone)</span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-6 flex shrink-0 justify-center"><div className="w-full h-px border-t border-dashed border-[#facc15] border-2" style={{ borderTopWidth: '1.5px', borderStyle: 'dashed' }} /></div>
-          <span className="text-xs font-medium text-[#a3a3a3]">Crypto</span>
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full border-t-[1.5px] border-solid border-[#10b981]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Transferred Money</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="w-6 flex shrink-0 justify-center"><div className="w-full border-t-[1.5px] border-dashed border-[#3f3f46]" /></div>
+          <span className="text-xs font-medium text-[#a3a3a3]">Connected</span>
         </div>
       </div>
 
@@ -348,10 +378,14 @@ function GraphOverviewPanel({
 const FIT_VIEW_OPTIONS = { padding: 0.2 };
 const DEFAULT_EDGE_OPTIONS = { animated: false };
 
+// ── Stable node/edge type maps (defined outside component to avoid React Flow warning #002) ──
+const NODE_TYPES = initialNodeTypes;
+const EDGE_TYPES = initialEdgeTypes;
+
 function organizeGraphLayout(inputNodes: any[], inputEdges: any[]) {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-  
+
   // Top to Bottom layout, with generous spacing
   dagreGraph.setGraph({ rankdir: 'TB', nodesep: 150, edgesep: 50, ranksep: 180 });
 
@@ -391,6 +425,9 @@ function GraphLaneGuide() {
 }
 
 function GraphContent() {
+  // Use module-level constants to avoid React Flow #002 warning
+  const nodeTypes = NODE_TYPES;
+  const edgeTypes = EDGE_TYPES;
   const { fitView } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -480,7 +517,9 @@ function GraphContent() {
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (!userStr) { window.location.href = "/login"; return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchGraph();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync view toggles into graph data
@@ -547,33 +586,97 @@ function GraphContent() {
     return () => ws.close();
   }, []);
 
+  // ── Graph Image Export ──
+  const exportGraph = async () => {
+    // Target the viewport to exclude UI controls
+    const element = document.querySelector(".react-flow__viewport") as HTMLElement;
+    if (!element) return;
+
+    try {
+      // Calculate the bounding box of all currently visible nodes
+      const currentNodes = filteredNodes;
+      if (currentNodes.length === 0) return;
+      
+      const nodesBounds = getNodesBounds(currentNodes);
+      const imageWidth = nodesBounds.width + 100; // Add padding
+      const imageHeight = nodesBounds.height + 100; // Add padding
+
+      // Calculate the transform needed to fit the nodes within the exported image
+      const viewport = getViewportForBounds(
+        nodesBounds,
+        imageWidth,
+        imageHeight,
+        0.1, // min zoom
+        2    // max zoom
+      );
+      
+      const { toPng } = await import("html-to-image");
+      
+      const dataUrl = await toPng(element, {
+        backgroundColor: "#050505",
+        width: imageWidth,
+        height: imageHeight,
+        pixelRatio: 2, // High resolution
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+      });
+      
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `fraud-network-intel-${new Date().toISOString().split("T")[0]}.png`;
+      a.click();
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Failed to export graph as image.");
+    }
+  };
+
   // Filter & Search
-  const filteredNodes = useMemo(() => {
+  const { filteredNodes, filteredEdges } = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    
-    return nodes.map(n => {
+
+    // 1. Determine which nodes are visible based on filters
+    const visibleNodesList = nodes.filter((n) => {
       let isVisible = true;
       const reports = n.data?.reports || 1;
       const isVictim = normalizeEntityType(n.data) === "VICTIM";
-      
+
       if (filterMode === "SINGLE" && !isVictim) {
         isVisible = reports < 2;
       } else if (filterMode === "REPEAT" && !isVictim) {
         isVisible = reports >= 2;
       }
-      
-      const matchesSearch = !term || (n.data?.label || n.data?.value || "").toLowerCase().includes(term);
-      
+      return isVisible;
+    });
+
+    const visibleNodeIds = new Set(visibleNodesList.map((n) => n.id));
+
+    // 2. Filter edges to only those where both source and target are visible
+    const visibleEdges = edges.filter(
+      (e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target)
+    );
+
+    // 3. Keep the current positions so dragging works (user can click Organize to relayout if needed)
+    const layoutedNodes = visibleNodesList;
+
+    // 4. Apply search opacity
+    const finalNodes = layoutedNodes.map((n) => {
+      const matchesSearch =
+        !term || (n.data?.label || n.data?.value || "").toLowerCase().includes(term);
       return {
         ...n,
-        hidden: !isVisible,
         style: {
           ...n.style,
           opacity: matchesSearch ? 1 : 0.15,
         },
       };
     });
-  }, [nodes, searchTerm, filterMode]);
+
+    return { filteredNodes: finalNodes, filteredEdges: visibleEdges };
+  }, [nodes, edges, searchTerm, filterMode]);
 
   const onNodeClick = (_: React.MouseEvent, node: any) => {
     if (node.data?.entityType === "CLUSTER" && node.data?.hidden_nodes) {
@@ -627,7 +730,7 @@ function GraphContent() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#050505] font-sans">
+    <div className="h-full w-full flex flex-col bg-[#050505]" suppressHydrationWarning>
 
       {/* ── Top Header ── */}
       <div className="shrink-0 px-4 pt-5 pb-0 z-20 sm:px-6">
@@ -705,6 +808,15 @@ function GraphContent() {
             >
               {showEdgeLabels ? <Eye size={12} /> : <EyeOff size={12} />}
               Links
+            </button>
+
+            {/* Export button */}
+            <button
+              onClick={exportGraph}
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#0d0d0d] px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-white/50 transition-all hover:text-white hover:bg-white/5"
+            >
+              <Download size={12} />
+              Export
             </button>
 
             {/* WS status */}
@@ -819,14 +931,14 @@ function GraphContent() {
 
         <ReactFlow
           nodes={filteredNodes}
-          edges={edges}
+          edges={filteredEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={() => setSelectedNode(null)}
-          nodeTypes={initialNodeTypes}
-          edgeTypes={initialEdgeTypes}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           fitViewOptions={FIT_VIEW_OPTIONS}
           minZoom={0.05}

@@ -139,9 +139,9 @@ export default function RegisterPage() {
                 <input 
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#34d399] transition-colors"
-                  placeholder="+91 98765 43210"
+                  autoComplete="off"
                   suppressHydrationWarning
                 />
               </div>

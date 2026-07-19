@@ -1,5 +1,5 @@
 {
-  "name": "raksha-setu",
+  "name": "fraudshield-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -28,6 +28,7 @@
     "dagre": "^0.8.5",
     "framer-motion": "^12.42.2",
     "groq-sdk": "^1.3.0",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",

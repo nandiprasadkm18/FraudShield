@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import intel, media, citizen, auth, telegram, geo
+from app.api.v1 import intel, media, citizen, auth, telegram, geo, users
 from app.core.websocket_manager import manager as ws_manager
 from app.core.exceptions import global_exception_handler
 from fastapi.responses import JSONResponse
@@ -50,6 +50,7 @@ app.include_router(citizen.router, prefix="/api", tags=["citizen"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(telegram.router, prefix="/api", tags=["telegram"])
 app.include_router(geo.router, prefix="/api/geo", tags=["geo"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
 @app.get("/api/health/live")
 def health_live():
@@ -90,3 +91,11 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
 
 # Trigger reload
 # trigger reload 2
+
+# trigger reload 3
+
+# trigger reload 4
+
+# trigger reload 5
+
+# trigger reload 6

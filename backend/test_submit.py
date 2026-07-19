@@ -1,17 +1,24 @@
 import asyncio
-import aiohttp
+import httpx
 
-async def main():
-    async with aiohttp.ClientSession() as session:
-        payload = {
-            'phoneNumber': '+918369271548',
-            'text': 'Dear Card Holder, Your HDFC Bank Credit Card ending with 4821 is blocked...',
-            'state': 'Karnataka',
-            'city': 'Bangalore',
-            'pincode': '',
-            'analysisResult': None
-        }
-        async with session.post('http://127.0.0.1:8000/api/intel/submit', json=payload) as resp:
-            print(await resp.text())
+async def test():
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            "http://127.0.0.1:8000/api/intel/submit",
+            json={
+                "text": "Your bank account is blocked.",
+                "phoneNumber": "unknown",
+                "isAnonymous": False,
+                "analysisResult": {
+                    "severity": "HIGH",
+                    "verdict": "SCAM",
+                    "fraudType": "BANKING",
+                    "confidenceScore": 0.96
+                }
+            }
+        )
+        print(res.status_code)
+        print(res.text)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(test())

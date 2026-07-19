@@ -45,6 +45,7 @@ class Nodetype(str, enum.Enum):
     TELEGRAM_ID = 'TELEGRAM_ID'
     CRYPTO_WALLET = 'CRYPTO_WALLET'
     VICTIM = 'VICTIM'
+    IFSC_CODE = 'IFSC_CODE'
 
 
 class Orgtype(str, enum.Enum):
@@ -408,6 +409,7 @@ class ThreatReports(Base):
     officerNotes: Mapped[Optional[dict]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     evidenceHistory: Mapped[Optional[dict]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     auditTrail: Mapped[Optional[dict]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
+    financialExposure: Mapped[Optional[float]] = mapped_column(Double(53))
 
     users: Mapped[Optional['Users']] = relationship('Users', back_populates='threat_reports')
     organizations: Mapped[Optional['Organizations']] = relationship('Organizations', back_populates='threat_reports')
@@ -436,6 +438,7 @@ class GeoEvents(Base):
     locationSource: Mapped[Locationsource] = mapped_column(Enum(Locationsource, values_callable=lambda cls: [member.value for member in cls], name='LocationSource'), nullable=False)
     createdAt: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(precision=3), nullable=False, server_default=text('CURRENT_TIMESTAMP'))
     district: Mapped[Optional[str]] = mapped_column(Text)
+    state: Mapped[Optional[str]] = mapped_column(Text)
     pincode: Mapped[Optional[str]] = mapped_column(Text)
     organizationId: Mapped[Optional[str]] = mapped_column(Text)
 
@@ -461,6 +464,7 @@ class NetworkNodes(Base):
     createdAt: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(precision=3), nullable=False, server_default=text('CURRENT_TIMESTAMP'))
     label: Mapped[Optional[str]] = mapped_column(Text)
     organizationId: Mapped[Optional[str]] = mapped_column(Text)
+    details: Mapped[Optional[dict]] = mapped_column("metadata", JSONB)
 
     organizations: Mapped[Optional['Organizations']] = relationship('Organizations', back_populates='network_nodes')
     threat_reports: Mapped['ThreatReports'] = relationship('ThreatReports', back_populates='network_nodes')

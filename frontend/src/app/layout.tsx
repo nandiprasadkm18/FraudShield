@@ -14,7 +14,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Raksha Setu Command Centre",
+  title: "FraudShield AI Command Centre",
   description: "AI-Powered Digital Public Safety Intelligence Platform",
 };
 

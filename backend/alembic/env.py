@@ -15,7 +15,7 @@ config = context.config
 db_url = str(settings.DATABASE_URL)
 # Alembic synchronous engine requires asyncpg to be stripped or replaced if using async, 
 # but usually we can just use the async URL with run_async migrations.
-# Raksha Setu uses asyncpg, so we need to set up async engine.
+# FraudShield AI uses asyncpg, so we need to set up async engine.
 config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.

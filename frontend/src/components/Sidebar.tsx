@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ShieldAlert, Map, Network, Users, UserX, Crown, Smartphone, Phone,
-  LogOut, Shield, ChevronUp, X
+  LogOut, Shield, ChevronUp, X, PieChart
 } from "lucide-react";
 import clsx from "clsx";
 import { useState, useEffect } from "react";
@@ -19,6 +19,7 @@ export function Sidebar() {
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(JSON.parse(userStr));
     }
   }, [pathname]);
@@ -34,6 +35,8 @@ export function Sidebar() {
 
   const graphLinks = [
     { href: "/network", label: "Dashboard", icon: Network },
+    { href: "/network/analytics", label: "Analytics & Graphs", icon: PieChart },
+    { href: "/network/reports", label: "Intercepted Reports", icon: ShieldAlert },
     { href: "/network/scammers", label: "Scammer Numbers", icon: Phone },
     { href: "/network/victims", label: "Victims", icon: Users },
     { href: "/network/upi", label: "UPI Accounts", icon: UserX },
@@ -42,6 +45,7 @@ export function Sidebar() {
     { href: "/network/websites", label: "Websites", icon: UserX },
     { href: "/network/telegram", label: "Telegram IDs", icon: UserX },
     { href: "/network/crypto", label: "Crypto Wallets", icon: UserX },
+    { href: "/network/users", label: "User Management", icon: Users },
   ];
 
   return (

@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from typing import List, Optional
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Raksha Setu"
+    PROJECT_NAME: str = "FraudShield AI"
     API_V1_STR: str = "/api/v1"
     
     # Security

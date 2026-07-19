@@ -14,7 +14,7 @@ async def handle_message(message: types.Message):
         return
         
     if message.text.startswith('/start'):
-        await message.reply("Welcome to Raksha Setu Intel Bot. Send me suspicious messages or numbers to analyze.")
+        await message.reply("Welcome to FraudShield AI Intel Bot. Send me suspicious messages or numbers to analyze.")
         return
         
     if message.text.startswith('/analyze'):

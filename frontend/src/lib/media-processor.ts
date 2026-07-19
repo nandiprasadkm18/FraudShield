@@ -49,7 +49,7 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
 
     // 4. Send to Groq Vision Model
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "qwen/qwen3.6-27b",
       messages: [
         {
           role: "user",

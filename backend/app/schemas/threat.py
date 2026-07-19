@@ -7,9 +7,10 @@ class SubmitPayload(BaseModel):
     text: str
     phoneNumber: Optional[str] = Field(default=None)
     city: Optional[str] = None
-    state: str
+    state: Optional[str] = None
     pincode: Optional[str] = None
-    analysisResult: Dict[str, Any]
+    isAnonymous: Optional[bool] = False
+    analysisResult: Optional[Dict[str, Any]] = None
 
 class ThreatStreamResponse(BaseModel):
     id: str

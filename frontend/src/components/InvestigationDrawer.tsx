@@ -114,7 +114,7 @@ export function InvestigationDrawer({ isOpen, onClose, entityId }: Investigation
                       <div className="text-[10px] font-bold tracking-widest text-zinc-500 font-mono mb-4 uppercase">Connected Reports ({data.reports.length})</div>
                       <div className="flex flex-col gap-3">
                         {data.reports.map((report: any, i: number) => (
-                          <div key={i} className="p-3 bg-white/5 border border-white/5 rounded-xl text-xs flex flex-col gap-1.5">
+                          <Link href={`/network/reports/${report.id}`} key={i} className="block p-3 bg-white/5 border border-white/5 rounded-xl text-xs flex flex-col gap-1.5 hover:bg-white/10 transition-colors cursor-pointer">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-white uppercase">{report.fraudType || "Unknown"}</span>
                               <span className={clsx("px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest font-mono uppercase", 
@@ -125,9 +125,12 @@ export function InvestigationDrawer({ isOpen, onClose, entityId }: Investigation
                                 {report.severity}
                               </span>
                             </div>
-                            <div className="text-zinc-400 font-mono">Target: {report.targetPhoneNumber}</div>
+                            <div className="text-zinc-400 font-mono flex flex-col gap-1">
+                              <span>Target: {report.targetPhoneNumber}</span>
+                              {report.victim && <span className="text-[#34d399]">Victim: {report.victim}</span>}
+                            </div>
                             <div className="text-[10px] text-zinc-600 font-mono mt-1">ID: {report.id.substring(0, 8)}... | {new Date(report.createdAt).toLocaleDateString()}</div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>

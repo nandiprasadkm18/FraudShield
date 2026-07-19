@@ -32,7 +32,14 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Invalid email or password");
+        let errMessage = "Invalid email or password";
+        try {
+          const errData = await res.json();
+          errMessage = errData.detail || errMessage;
+        } catch (e) {
+          if (res.status === 429) errMessage = "Too many requests. Please try again later.";
+        }
+        throw new Error(errMessage);
       }
 
       const data = await res.json();

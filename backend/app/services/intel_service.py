@@ -91,6 +91,8 @@ class IntelService:
             )
         )
         await db.execute(stmt_phone)
+        # CRITICAL: flush phone_reputations before inserting ThreatReports (FK dependency)
+        await db.flush()
         
         # 2. Insert ThreatReport and GroqCallLogs
         threat_id = str(uuid.uuid4())
@@ -114,6 +116,11 @@ class IntelService:
                 reportId=threat_id
             )
             db.add(new_log)
+            # CRITICAL: flush GroqCallLogs before ThreatReports references it (FK)
+            await db.flush()
+        
+        
+        logger.error(f"DEBUG: phone='{phone}', targetPhoneNumber='{phone}', text length={len(text)}")
         
         new_threat = ThreatReports(
             id=threat_id,
@@ -130,8 +137,12 @@ class IntelService:
             reasoning=out.get("reasoning"),
             escalate=out.get("escalate", False),
             sourceIp=ip_hash,
-            groqCallLogId=log_id
+            groqCallLogId=log_id,
+            financialExposure=out.get("financialExposure"),
+            createdByUserId=None if payload.isAnonymous else (current_user["id"] if current_user else None),
+            organizationId=None if payload.isAnonymous else (current_user.get("organizationId") if current_user else None)
         )
+        logger.error(f"DEBUG: new_threat.targetPhoneNumber='{new_threat.targetPhoneNumber}'")
         db.add(new_threat)
         await db.flush()
         
@@ -156,6 +167,7 @@ class IntelService:
                     severity=severity_val,
                     locationSource=Locationsource.USER_SUPPLIED,
                     district=payload.city,
+                    state=payload.state,
                     pincode=payload.pincode
                 )
                 db.add(geo_event)
@@ -175,10 +187,10 @@ class IntelService:
             ))
             added_entities.add(phone)
 
-        submitter_name = user.name if user and hasattr(user, "name") and user.name else "Anonymous"
-        submitter_phone = user.phone if user and hasattr(user, "phone") and user.phone else ""
-        victim_label = f"{submitter_name} [{submitter_phone}]" if submitter_phone else f"{submitter_name}"
-        victim_value = user.id if user else (ip_hash or str(uuid.uuid4()))
+        submitter_name = getattr(user, "name", None) or "Anonymous"
+        submitter_phone = getattr(user, "phone", None) or ""
+        victim_label = f"{submitter_name} [{submitter_phone}]" if submitter_phone else submitter_name
+        victim_value = getattr(user, "id", None) or ip_hash or str(uuid.uuid4())
         
         db.add(NetworkNodes(
             id=victim_node_id,
@@ -204,7 +216,8 @@ class IntelService:
             "WEBSITE": Nodetype.WEBSITE,
             "EMAIL_ADDRESS": Nodetype.EMAIL,
             "TELEGRAM_ID": Nodetype.TELEGRAM_ID,
-            "CRYPTO_WALLET": Nodetype.CRYPTO_WALLET
+            "CRYPTO_WALLET": Nodetype.CRYPTO_WALLET,
+            "IN_IFSC_CODE": Nodetype.IFSC_CODE
         }
 
         extracted_entities = out.get("extracted_scammer_entities", [])
@@ -217,7 +230,9 @@ class IntelService:
             node_type = entity_type_map[raw_type]
             
             # Use original value as label instead of Extracted to look better
-            display_label = val
+            display_label = f"{val} ({victim_label})"
+            
+            ent_metadata = ent.get("metadata")
             
             if val not in added_entities:
                 ent_node_id = str(uuid.uuid4())
@@ -226,13 +241,17 @@ class IntelService:
                     entityType=node_type,
                     entityValue=val,
                     reportId=threat_id,
-                    label=display_label
+                    label=display_label,
+                    details=ent_metadata
                 ))
                 added_entities.add(val)
                 
+                # Connect entity to the target phone if it exists, else directly to victim
+                parent_node_id = target_node_id if (phone and phone != "unknown") else victim_node_id
+                
                 db.add(NetworkEdges(
                     id=str(uuid.uuid4()),
-                    sourceNodeId=victim_node_id,
+                    sourceNodeId=parent_node_id,
                     targetNodeId=ent_node_id,
                     reportId=threat_id,
                     weight=1.0

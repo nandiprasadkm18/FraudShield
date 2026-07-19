@@ -17,4 +17,5 @@ reasoning: string
 timeline: list of dicts with 'step' and 'detail'
 escalate: boolean
 scammerEntities: list of strings (the exact placeholders that belong to the scammer)
+bankDetails: dictionary mapping Bank Account placeholders (like <IN_BANK_ACCOUNT_0>) to an object with keys "IFSC", "Bank", "Holder", "Branch". Include details if they exist in the text.
 financialExposure: integer or null (the monetary amount asked by the scammer in INR, or null if no amount is mentioned)

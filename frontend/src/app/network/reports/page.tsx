@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ShieldAlert, FileText, ChevronRight, Activity } from "lucide-react";
+import { ArrowLeft, ShieldAlert, FileText, ChevronRight, Activity, Download } from "lucide-react";
 import clsx from "clsx";
 
 interface Report {
@@ -13,6 +13,7 @@ interface Report {
   severity: string;
   createdAt: string;
   confidenceScore: number;
+  reporterName?: string;
 }
 
 export default function ReportsList() {
@@ -28,7 +29,59 @@ export default function ReportsList() {
       .then(data => setReports(Array.isArray(data) ? data : []))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
+
+    // Connect to WebSocket for real-time feed
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/api/v1/intel/ws";
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.event === "NEW_REPORT") {
+          const newReport = {
+            id: payload.id,
+            targetPhoneNumber: payload.phone,
+            fraudType: payload.type,
+            verdict: payload.verdict,
+            severity: payload.severity.toUpperCase(),
+            createdAt: payload.timestamp,
+            confidenceScore: payload.confidence,
+          };
+          setReports((prev) => [newReport, ...prev]);
+        }
+      } catch (err) {
+        console.error("WebSocket message parse error:", err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed.");
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
+
+  const handleDownload = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/intel/export/incident/${id}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fraudshield-ai-incident-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert("Failed to download PDF");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white p-8 font-sans">
@@ -53,7 +106,8 @@ export default function ReportsList() {
             <thead className="bg-zinc-900 border-b border-white/5 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
               <tr>
                 <th className="px-6 py-4 font-bold">Threat ID</th>
-                <th className="px-6 py-4 font-bold">Target Phone</th>
+                <th className="px-6 py-4 font-bold">Reporter</th>
+                <th className="px-6 py-4 font-bold">Scammer Number</th>
                 <th className="px-6 py-4 font-bold">Type</th>
                 <th className="px-6 py-4 font-bold">Verdict</th>
                 <th className="px-6 py-4 font-bold">Severity</th>
@@ -64,7 +118,7 @@ export default function ReportsList() {
             <tbody className="divide-y divide-white/5">
               {reports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-zinc-500 font-mono text-sm">
+                  <td colSpan={8} className="px-6 py-12 text-center text-zinc-500 font-mono text-sm">
                     No reports found.
                   </td>
                 </tr>
@@ -72,6 +126,9 @@ export default function ReportsList() {
                 <tr key={r.id} className="hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => window.location.href = `/network/reports/${r.id}`}>
                   <td className="px-6 py-4 font-mono font-bold text-xs text-zinc-300">
                     RS-{r.id.slice(-8).toUpperCase()}
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs text-[#34d399]">
+                    {r.reporterName || "Citizen"}
                   </td>
                   <td className="px-6 py-4 font-mono font-bold text-white tracking-widest">
                     {r.targetPhoneNumber || "UNKNOWN"}
@@ -103,8 +160,15 @@ export default function ReportsList() {
                   <td className="px-6 py-4 font-mono text-xs text-zinc-500 text-right">
                     {new Date(r.createdAt).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <ChevronRight size={16} className="inline text-zinc-600 group-hover:text-white transition-colors" />
+                  <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
+                    <button 
+                      onClick={(e) => handleDownload(e, r.id)}
+                      className="p-1.5 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-[#34d399] transition-colors"
+                      title="Download PDF Report"
+                    >
+                      <Download size={16} />
+                    </button>
+                    <ChevronRight size={16} className="text-zinc-600 group-hover:text-white transition-colors" />
                   </td>
                 </tr>
               ))}

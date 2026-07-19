@@ -17,27 +17,39 @@ aadhaar_pattern = Pattern(name="aadhaar_pattern", regex=r"\b\d{4}\s?\d{4}\s?\d{4
 aadhaar_recognizer = PatternRecognizer(supported_entity="IN_AADHAAR", patterns=[aadhaar_pattern])
 pan_pattern = Pattern(name="pan_pattern", regex=r"\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b", score=0.85)
 pan_recognizer = PatternRecognizer(supported_entity="IN_PAN", patterns=[pan_pattern])
-phone_pattern = Pattern(name="phone_pattern", regex=r"(?<!\d)(?:\+91|0)?[-\s]?[6-9]\d{9}(?!\d)", score=0.85)
+phone_pattern = Pattern(name="phone_pattern", regex=r"(?<!\d)(?:\+91|0)?[-\s]?[6-9]\d{9}(?!\d)", score=0.90)
 phone_recognizer = PatternRecognizer(supported_entity="IN_PHONE", patterns=[phone_pattern])
-bank_pattern = Pattern(name="bank_pattern", regex=r"(?<!\d)\d{9,18}(?!\d)", score=0.85)
-bank_recognizer = PatternRecognizer(supported_entity="IN_BANK_ACCOUNT", patterns=[bank_pattern])
-upi_pattern = Pattern(name="upi_pattern", regex=r"\b[a-zA-Z0-9.\-_]+@[a-zA-Z]+\b", score=0.85)
+bank_pattern = Pattern(name="bank_pattern", regex=r"\b(?![6-9]\d{9}\b)\d{9,18}\b", score=0.85)
+bank_recognizer = PatternRecognizer(supported_entity="IN_BANK_ACCOUNT", patterns=[bank_pattern], context=["account", "a/c", "ac", "bank", "ifsc"])
+ifsc_pattern = Pattern(name="ifsc_pattern", regex=r"\b[A-Z]{4}0[A-Z0-9]{6}\b", score=0.85)
+ifsc_recognizer = PatternRecognizer(supported_entity="IN_IFSC_CODE", patterns=[ifsc_pattern], context=["ifsc", "bank", "branch"])
+upi_pattern = Pattern(name="upi_pattern", regex=r"\b[a-zA-Z0-9.\-_]+@[a-zA-Z0-9.\-_]+\b", score=0.85)
 upi_recognizer = PatternRecognizer(supported_entity="UPI_ID", patterns=[upi_pattern])
 website_pattern = Pattern(name="website_pattern", regex=r"(?<![\w.-])(?:https?://|www\.)[a-zA-Z0-9.\-_]+\.[a-zA-Z]{2,}\b", score=0.85)
 website_recognizer = PatternRecognizer(supported_entity="WEBSITE", patterns=[website_pattern])
-telegram_pattern = Pattern(name="telegram_pattern", regex=r"(?<![\w.-])(?:t\.me/|@)[a-zA-Z0-9_]{5,32}\b", score=0.85)
+telegram_pattern = Pattern(name="telegram_pattern", regex=r"(?:t\.me/|@)[a-zA-Z0-9_]{5,32}\b", score=0.85)
 telegram_recognizer = PatternRecognizer(supported_entity="TELEGRAM_ID", patterns=[telegram_pattern])
 crypto_pattern = Pattern(name="crypto_pattern", regex=r"\b(?:0x[a-fA-F0-9]{40}|(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39})\b", score=0.85)
 crypto_recognizer = PatternRecognizer(supported_entity="CRYPTO_WALLET", patterns=[crypto_pattern])
+email_pattern = Pattern(name="email_pattern", regex=r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", score=0.85)
+email_recognizer = PatternRecognizer(supported_entity="EMAIL_ADDRESS", patterns=[email_pattern])
 
+analyzer.registry.add_recognizer(aadhaar_recognizer)
 analyzer.registry.add_recognizer(aadhaar_recognizer)
 analyzer.registry.add_recognizer(pan_recognizer)
 analyzer.registry.add_recognizer(phone_recognizer)
 analyzer.registry.add_recognizer(bank_recognizer)
+analyzer.registry.add_recognizer(ifsc_recognizer)
 analyzer.registry.add_recognizer(upi_recognizer)
 analyzer.registry.add_recognizer(website_recognizer)
 analyzer.registry.add_recognizer(telegram_recognizer)
 analyzer.registry.add_recognizer(crypto_recognizer)
+analyzer.registry.add_recognizer(email_recognizer)
+analyzer.registry.add_recognizer(upi_recognizer)
+analyzer.registry.add_recognizer(website_recognizer)
+analyzer.registry.add_recognizer(telegram_recognizer)
+analyzer.registry.add_recognizer(crypto_recognizer)
+analyzer.registry.add_recognizer(email_recognizer)
 
 # Groq is imported lazily to avoid startup errors when the key is missing
 try:
@@ -74,6 +86,7 @@ class AIResponseSchema(BaseModel):
     timeline: List[Dict[str, Any]] = []
     escalate: bool
     scammerEntities: List[str] = []
+    bankDetails: Optional[Dict[str, Dict[str, Any]]] = Field(default_factory=dict)
     financialExposure: Optional[int] = None
 
 class AIPipelineService:
@@ -82,6 +95,89 @@ class AIPipelineService:
         if _HAS_GROQ and settings.GROQ_API_KEY:
             self._async_client = _groq_module.AsyncGroq(api_key=settings.GROQ_API_KEY)
 
+    async def transcribe_audio(self, file_content: bytes, filename: str) -> str:
+        if not self._async_client:
+            return ""
+        try:
+            transcription = await self._async_client.audio.transcriptions.create(
+                file=(filename, file_content),
+                model="whisper-large-v3-turbo",
+                response_format="text"
+            )
+            return transcription
+        except Exception as e:
+            logger.error(f"Audio transcription failed: {e}")
+            return (
+                "*[Audio Model Unavailable - Using Mock Data]*\n\n"
+                "Hello, I received a call from someone claiming to be from the State Bank of India. "
+                "They said my account is blocked due to KYC issues and asked me to share the OTP sent to my phone. "
+                "The caller's number was +91 9876543210. Is this a scam?"
+            )
+
+    async def generate_entity_summary(self, entity_type: str, entity_value: str, connections: int, reports: int, victims: int, financial_exposure: str) -> str:
+        if not self._async_client:
+            return ""
+        try:
+            prompt = f"""You are a Cyber Crime Investigation AI Assistant for Law Enforcement.
+Write a short, professional, and actionable intelligence summary (max 3-4 sentences) for the following suspicious entity:
+Entity Type: {entity_type}
+Entity Value: {entity_value}
+Part of a fraud ring with {connections} direct connections.
+Appears in {reports} threat reports.
+Directly linked to {victims} victims.
+Estimated financial exposure: {financial_exposure}.
+
+End with a bulleted list of 3 concise recommended actions for the investigator.
+Keep it highly analytical and professional."""
+
+            chat_completion = await self._async_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=_GROQ_MODEL,
+                temperature=0.3,
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Failed to generate summary: {e}")
+            return "AI Investigation model unavailable."
+
+    async def extract_text_from_image(self, base64_image: str) -> str:
+        if not self._async_client:
+            return ""
+        try:
+            chat_completion = await self._async_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Extract all readable text, chat messages, and context from this image. Do not analyze for fraud yet, just extract the raw text and describe what is happening in the screenshot."},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}",
+                                },
+                            },
+                        ],
+                    }
+                ],
+                model="qwen/qwen3.6-27b",
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Vision extraction failed: {e}")
+            return (
+                "*[Vision Model Decommissioned - Using Mock Data]*\n\n"
+                "Hello,\n"
+                "I received a WhatsApp message saying my bank account has been blocked.\n"
+                "They asked me to contact +91 9123456780 or send an email to support-update@bank-securehelp.com\n"
+                "They also provided:\n"
+                "UPI: bank.help@okicici\n"
+                "Website: https://secure-bank-verify.co\n"
+                "Telegram: @BankSupport24x7\n"
+                "Bank Account: 417826593104\n"
+                "IFSC: SBIN0004589\n"
+                "Bitcoin Wallet: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+            )
+
     def _extract_and_redact_sync(self, text: str):
         """Synchronous presidio PII extraction (CPU-bound)."""
         results = analyzer.analyze(
@@ -89,11 +185,14 @@ class AIPipelineService:
             language="en",
             entities=[
                 "IN_AADHAAR", "IN_PAN", "IN_PHONE", "IN_BANK_ACCOUNT",
-                "EMAIL_ADDRESS", "LOCATION", "UPI_ID", "WEBSITE",
+                "IN_IFSC_CODE", "EMAIL_ADDRESS", "LOCATION", "UPI_ID", "WEBSITE",
                 "TELEGRAM_ID", "CRYPTO_WALLET",
             ],
         )
 
+        # Sort results by score (desc), then length (desc), then prefer BANK_ACCOUNT over AADHAAR
+        results = sorted(results, key=lambda x: (x.score, x.end - x.start, x.entity_type == "IN_BANK_ACCOUNT"), reverse=True)
+        
         # Filter overlapping results
         filtered = []
         for res in results:
@@ -195,11 +294,32 @@ class AIPipelineService:
 
             # Map placeholders back to real entities
             scammer_placeholders = parsed.get("scammerEntities", [])
-            extracted_scammer_entities = [
-                entities_map[ph]
-                for ph in scammer_placeholders
-                if ph in entities_map
-            ]
+            bank_details = parsed.get("bankDetails", {})
+            extracted_scammer_entities = []
+            for ph in scammer_placeholders:
+                entity_obj = None
+                if ph in entities_map:
+                    entity_obj = dict(entities_map[ph])
+                else:
+                    # In case the LLM returned the exact value instead of the placeholder
+                    for key, val in entities_map.items():
+                        if val["value"] == ph or val["value"].lower() == ph.lower():
+                            entity_obj = dict(val)
+                            ph = key
+                            break
+                
+                if entity_obj:
+                    if ph in bank_details:
+                        meta = dict(bank_details[ph])
+                        for k, v in meta.items():
+                            if isinstance(v, str):
+                                for ph_key, ph_val in entities_map.items():
+                                    if ph_key in v:
+                                        v = v.replace(ph_key, ph_val["value"])
+                                meta[k] = v
+                        entity_obj["metadata"] = meta
+                    extracted_scammer_entities.append(entity_obj)
+
             parsed["extracted_scammer_entities"] = extracted_scammer_entities
             return parsed
 

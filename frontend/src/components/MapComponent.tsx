@@ -241,7 +241,7 @@ export default function MapComponent({ newReport }: MapComponentProps = {}) {
                     <div className="text-xs text-zinc-300">📍 {event.district}</div>
                   )}
                   <div className="text-[10px] text-zinc-500 mt-1 border-t border-white/10 pt-1 uppercase tracking-widest font-mono">
-                    Source: Raksha Setu Intel
+                    Source: FraudShield AI Intel
                     <br/>
                     {new Date(event.createdAt).toLocaleDateString()}
                   </div>

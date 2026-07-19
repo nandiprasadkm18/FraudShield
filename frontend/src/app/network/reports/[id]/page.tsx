@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, ShieldAlert, Activity, AlertTriangle, AlertCircle, ShieldCheck, Database, Phone, Link as LinkIcon, Crosshair, FileText } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Activity, AlertTriangle, AlertCircle, ShieldCheck, Database, Phone, Link as LinkIcon, Crosshair, FileText, Download } from "lucide-react";
 import clsx from "clsx";
 
 interface ReportDetail {
@@ -36,6 +36,26 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [unwrappedParams.id]);
+
+  const handleDownload = async () => {
+    if (!report) return;
+    try {
+      const res = await fetch(`/api/intel/export/incident/${report.id}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fraudshield-ai-incident-${report.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert("Failed to download PDF");
+    }
+  };
 
   if (loading) {
     return (
@@ -98,6 +118,15 @@ export default function ReportDetailPage({ params }: { params: Promise<{ id: str
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Threat Investigation</h1>
           <p className="text-sm text-zinc-500 font-mono tracking-widest mt-1 uppercase">Report ID: {displayId}</p>
+        </div>
+        <div className="ml-auto">
+          <button 
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors font-mono text-sm"
+          >
+            <Download size={16} className="text-[#34d399]" />
+            Download PDF
+          </button>
         </div>
       </div>
 

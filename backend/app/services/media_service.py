@@ -113,17 +113,30 @@ class MediaService:
                         ],
                     }
                 ],
-                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                model="qwen/qwen3.6-27b",
             )
             import json
+            import re
             result_str = chat_completion.choices[0].message.content.strip()
-            if result_str.startswith("```json"):
-                result_str = result_str[7:]
-            if result_str.startswith("```"):
-                result_str = result_str[3:]
-            if result_str.endswith("```"):
-                result_str = result_str[:-3]
-            return json.loads(result_str.strip())
+            
+            # Try parsing directly
+            try:
+                return json.loads(result_str, strict=False)
+            except json.JSONDecodeError:
+                pass
+                
+            # If it failed, try extracting JSON from markdown blocks
+            match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', result_str, re.DOTALL)
+            if match:
+                return json.loads(match.group(1), strict=False)
+                
+            # Fallback parsing
+            if "{" in result_str and "}" in result_str:
+                start = result_str.find("{")
+                end = result_str.rfind("}") + 1
+                return json.loads(result_str[start:end], strict=False)
+                
+            raise Exception("Failed to parse JSON response from model.")
         except Exception as e:
             return {"error": f"Image extraction error: {str(e)}"}
 

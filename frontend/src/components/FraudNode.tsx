@@ -15,6 +15,7 @@ export const NODE_META: Record<string, { icon: any; glow: string; bg: string; la
   CRYPTO_WALLET: { icon: Bitcoin, glow: "#facc15", bg: "#facc15", label: "Crypto Wallet" },
   WEBSITE: { icon: Globe, glow: "#f87171", bg: "#f87171", label: "Website" },
   CLUSTER: { icon: Network, glow: "#34d399", bg: "#34d399", label: "Fraud Ring" },
+  IFSC_CODE: { icon: Landmark, glow: "#facc15", bg: "#facc15", label: "IFSC Code" },
 };
 
 export function getMeta(entityType: string, isKingpin: boolean) {
@@ -56,48 +57,36 @@ export default function FraudNode({ data, selected }: NodeProps) {
       {/* Node body */}
       <div
         style={{
-          width: size,
-          height: size,
           boxShadow: shouldPulse
             ? `0 0 0 4px ${glow}33, 0 0 20px ${glow}88`
             : selected
               ? `0 0 0 2px #fff, 0 0 12px ${glow}`
-              : `0 0 8px ${glow}`,
-          backgroundColor: meta.bg,
-          border: `2px solid #ffffff33`,
+              : `0 4px 12px rgba(0,0,0,0.5)`,
+          borderColor: selected ? glow : `${glow}40`,
           animation: shouldPulse ? "node-pulse 1.5s infinite" : isNew ? "node-ping 0.6s ease-out 1" : "none",
-          opacity: 1
         }}
-        className="rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer"
+        className="flex items-center gap-3 bg-[#0a0a0a] border rounded-xl p-2 pr-4 transition-all duration-300 cursor-pointer min-w-[140px]"
       >
-        <Icon
-          size={size * 0.5}
-          strokeWidth={2.5}
-          className="text-black"
-        />
+        <div style={{ backgroundColor: meta.bg, boxShadow: `0 0 10px ${glow}60` }} className="flex items-center justify-center rounded-lg w-10 h-10 shrink-0">
+          <Icon size={20} strokeWidth={2.5} className="text-black" />
+        </div>
+        <div className="flex flex-col text-left overflow-hidden">
+          <span style={{ color: glow }} className="text-[9px] font-black tracking-widest uppercase mb-0.5 font-mono">
+            {meta.label}
+          </span>
+          <span className="text-white font-mono text-[11px] truncate" title={data.label || data.value}>
+            {data.label || data.value}
+          </span>
+        </div>
       </div>
 
       {/* Cluster count badge */}
       {isCluster && data.count > 0 && (
         <div
           style={{ background: glow, boxShadow: `0 0 6px ${glow}` }}
-          className="absolute -top-1 -right-1 text-black font-black font-mono text-[8px] w-4 h-4 rounded-full flex items-center justify-center"
+          className="absolute -top-2 -right-2 text-black font-black font-mono text-[10px] w-5 h-5 rounded-full flex items-center justify-center"
         >
           {data.count}
-        </div>
-      )}
-
-      {/* Label */}
-      {showLabels && (
-        <div
-          style={{ color: isKingpin && highlight ? glow : "#ffffff", maxWidth: 176 }}
-          className={clsx(
-            "absolute top-full mt-2 rounded-lg border border-white/12 bg-[#050505]/95 px-2.5 py-1.5 text-[11px] font-mono text-center leading-tight shadow-lg backdrop-blur",
-            "whitespace-nowrap overflow-hidden text-ellipsis transition-colors",
-            isKingpin && "font-bold border-[#34d399]/30"
-          )}
-        >
-          {data.label || data.value}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import clsx from "clsx";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
+  const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,12 +28,20 @@ export default function DashboardPage() {
     async function fetchStats() {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("/api/intel/network", {
+        const resStats = await fetch("/api/intel/network", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.ok) {
-          const data = await res.json();
+        const resReports = await fetch("/api/intel/reports", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (resStats.ok) {
+          const data = await resStats.json();
           setStats(data.stats);
+        }
+        if (resReports.ok) {
+          const data = await resReports.json();
+          setReports(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error(err);
@@ -42,6 +51,8 @@ export default function DashboardPage() {
     }
     fetchStats();
   }, []);
+
+
 
   const cards = [
     { title: "Total Reports", value: stats?.totalReports || 0, icon: FileText, href: "/network/reports" },
@@ -95,6 +106,8 @@ export default function DashboardPage() {
           )})}
         </div>
       )}
+
+
 
       <div className="mt-12 flex items-center justify-between bg-zinc-900 border border-white/10 rounded-2xl p-8">
         <div>

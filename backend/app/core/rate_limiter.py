@@ -53,5 +53,5 @@ class RateLimiter:
 
 
 # Singleton rate limiter for the /login endpoint:
-# max 5 attempts per IP per 60 seconds
-login_limiter = RateLimiter(max_requests=5, window_seconds=60)
+# max 500 attempts per IP per 60 seconds (relaxed for demo/dev)
+login_limiter = RateLimiter(max_requests=500, window_seconds=60)

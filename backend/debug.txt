@@ -1,3 +1,0 @@
-Counts: {'aaf8eff2-5e2a-45ec-be8c-f48670b4bbda': 1}
-Edges: [{'source': 'cluster-0-victims', 'target': '2a90ca4f-5ce4-4c83-b0a3-ea22e91836f2'}, {'source': 'cluster-0-victims', 'target': 'd8a7832d-b39a-4c89-847c-2793f6bf6154'}, {'source': 'cluster-0-victims', 'target': 'df7b804c-3d36-4fc1-9488-78c13902755a'}, {'source': 'cluster-0-victims', 'target': '681fed5f-ef04-4eb9-ac40-4aa910200500'}, {'source': 'd8a7832d-b39a-4c89-847c-2793f6bf6154', 'target': '98198b2f-494e-4f5c-9262-fd7d5a8cdf54'}]
-Node map: [('cluster-0-victims', 'CLUSTER'), ('2a90ca4f-5ce4-4c83-b0a3-ea22e91836f2', 'PHONE_NUMBER'), ('d8a7832d-b39a-4c89-847c-2793f6bf6154', 'PHONE_NUMBER'), ('98198b2f-494e-4f5c-9262-fd7d5a8cdf54', 'WEBSITE'), ('df7b804c-3d36-4fc1-9488-78c13902755a', 'PHONE_NUMBER')]
