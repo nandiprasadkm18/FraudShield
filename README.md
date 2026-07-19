@@ -1,74 +1,102 @@
-# FraudShield (Raksha-Setu)
+<div align="center">
+  
+  # 🛡️ FraudShield (Raksha-Setu)
+  
+  **Next-Generation AI Cybercrime Investigation & Network Analysis Platform**
+  
+  [![ET Hackathon](https://img.shields.io/badge/ET_Hackathon-2026-34d399?style=for-the-badge&logo=hackthebox)](#)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+  [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+  [![Groq AI](https://img.shields.io/badge/Powered_by-Groq_AI-f55036?style=for-the-badge)](https://groq.com/)
+</div>
 
-FraudShield is an advanced AI-powered fraud investigation and network analysis platform designed for law enforcement to track, visualize, and analyze cybercrime networks. By aggregating data across multiple dimensions (UPI, Crypto, Emails, Devices, Telegram, Bank Accounts, etc.), FraudShield empowers investigators and citizens to combat organized digital fraud effectively.
+---
 
-## 🚀 Key Features
+> [!IMPORTANT]
+> FraudShield aggregates siloed cybercrime data (UPI, Crypto, Emails, Telegram, Phone Numbers) into a unified visual graph, empowering Law Enforcement to track fraud rings, identify kingpins, and stop organized scams in real-time.
 
-- **Interactive Network Graph Analysis**: Visually track and investigate relationships between scammers, victims, kingpins, devices, bank accounts, and crypto wallets using dynamic React Flow graphs.
-- **AI-Powered Intelligence Generation**: Automatically generate highly professional and actionable Law Enforcement investigation summaries in real-time for any suspicious entity using the Groq AI model.
-- **Geo-Spatial Threat Mapping**: Pinpoint the physical locations and operational hotspots of threat actors on interactive Leaflet map views.
-- **Automated Evidence Extraction**: 
-  - **Text & NLP Analysis**: Integrated with Groq LLMs to automatically extract malicious entities and insights from unstructured text and citizen reports.
-  - **Multimedia Processing**: Transcribe scam voice notes via Whisper and extract text/context from screenshots seamlessly using Qwen Vision.
-  - **Data Privacy**: Automatic PII (Personally Identifiable Information) anonymization using Microsoft Presidio to protect victim data, with strict regex mapping to avoid miscategorizing entities (e.g. 10-digit Indian mobile numbers vs Bank Accounts).
-- **Citizen Reporting Portal**: A dedicated portal for citizens to securely report fraud incidents and submit evidence directly into the system.
-- **Telegram Bot Integration**: Ingest real-time threat intelligence, analyze forwarded voice notes/images, and check number reputations instantly via Telegram.
-- **Comprehensive Analytics Dashboards**: Live dashboards and analytics that visualize the real-time financial exposure, active fraud rings, and threat volume across the intelligence network.
+## 🌟 The Problem
+Cybercrime operates in complex, organized networks. Traditional reporting mechanisms treat incidents as isolated events, missing the broader connections between scammers, mules, and kingpins. **FraudShield bridges this gap.**
 
-## 🛠️ Technology Stack
+## ✨ Next-Level Features
 
-- **Frontend**: Next.js (React), TypeScript, Tailwind CSS, React Flow (for network graphs), Leaflet (for maps), Recharts (for analytics).
-- **Backend**: Python, FastAPI, SQLAlchemy (Backend ORM), Alembic (Migrations).
-- **AI & ML Pipelines**: Groq API (LLM inference & Vision), Whisper (Audio Transcription), Microsoft Presidio (PII Anonymization).
-- **Database**: PostgreSQL (with asyncpg).
+### 🕸️ Interactive Network Intelligence
+Stop looking at spreadsheets. FraudShield dynamically maps connections between scammers, victims, and digital assets (Bank Accounts, Crypto Wallets, UPI IDs) using a massive **React Flow** powered intelligence canvas. 
 
-## 🏁 Getting Started
+### 🧠 Multi-Modal AI Extraction
+Upload a screenshot of a WhatsApp scam, or forward a voice note to our Telegram bot. FraudShield handles the rest:
+- **Vision:** Extracts OCR text and context using **Qwen Vision**.
+- **Audio:** Transcribes scam calls instantly via **Whisper-Large**.
+- **NLP:** Classifies the fraud type, severity, and targets using **Llama 3**.
 
-### Prerequisites
-- Node.js (v18+)
-- Python (v3.12+)
-- PostgreSQL (running locally or a remote instance)
+### 🛡️ Zero-Trust PII Redaction
+Citizen privacy is paramount. Integrated with **Microsoft Presidio**, FraudShield automatically redacts all Personally Identifiable Information (PII) before it ever hits the LLMs or analyst dashboards, complete with strict regex parsing to prevent misclassification.
 
-### 1. Backend Setup (FastAPI)
-Navigate to the `backend` directory and set up your Python environment:
+### ⚡ Live AI Investigation Summaries
+Click on any node in the graph, and our backend dynamically aggregates its true financial exposure, victim count, and edge connections, prompting Groq to generate a professional, actionable **Law Enforcement Intelligence Summary** on the fly.
+
+### 📍 Geo-Spatial Threat Mapping
+Visualize the physical operational hotspots of threat actors across the country using interactive Leaflet-powered heatmaps.
+
+---
+
+## 🏗️ Architecture & Tech Stack
+
+FraudShield is built for extreme performance and scalability.
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | Next.js 14, React 18, TailwindCSS, React Flow, Recharts |
+| **Backend** | Python, FastAPI, WebSockets, Uvicorn, SQLAlchemy |
+| **AI Models** | Groq API (Llama 3.1, Whisper-v3, Qwen-Vision), Microsoft Presidio |
+| **Database** | PostgreSQL (Asyncpg) + Alembic Migrations |
+
+---
+
+## 🚀 Getting Started
+
+> [!TIP]
+> Ensure you have PostgreSQL, Python 3.12+, and Node 18+ installed before beginning.
+
+### 1️⃣ Backend Setup
 ```bash
-cd backend
+git clone https://github.com/nandiprasadkm18/FraudShield.git
+cd FraudShield/backend
+
+# Initialize virtual environment
 python -m venv venv
+source venv/bin/activate  # (Windows: venv\Scripts\activate)
 
-# Activate virtual environment (Windows)
-venv\Scripts\activate
-# Activate virtual environment (Mac/Linux)
-source venv/bin/activate
-
-# Install dependencies
+# Install requirements
 pip install -r requirements.txt
 
-# Configure your environment variables (.env)
-# Required keys: GROQ_API_KEY, TELEGRAM_BOT_TOKEN
-# Example: DATABASE_URL="postgresql+asyncpg://postgres:password@localhost:5432/eth_db"
+# Configure environment variables (Add GROQ_API_KEY and TELEGRAM_BOT_TOKEN)
+# Copy the structure from your environment to a .env file
 
 # Run database migrations
 alembic upgrade head
 
-# Start the development server
+# Start the intelligence engine
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Frontend Setup (Next.js)
-Open a new terminal, navigate to the `frontend` directory, and start the Next.js app:
+### 2️⃣ Frontend Setup
 ```bash
-cd frontend
+cd ../frontend
 
-# Install dependencies
+# Install Node dependencies
 npm install
 
-# Start the development server
+# Start the dashboard
 npm run dev
 ```
-The frontend will be accessible at [http://localhost:3000](http://localhost:3000).
+> The dashboard will be live at `http://localhost:3000`
 
-### 3. Running the Telegram Bot
-The Telegram bot is now tightly integrated into the backend lifecycle and can run alongside the main application. You can manage Webhook configurations through the `.env` settings.
+---
 
 ## 🤝 Contributing
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
+Built with passion for the **ET Hackathon**. If you are a developer, security analyst, or law enforcement officer, we welcome your PRs! 
+
+<div align="center">
+  <i>"Connecting the dots, breaking the rings."</i>
+</div>
