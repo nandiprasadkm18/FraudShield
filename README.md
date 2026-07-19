@@ -18,7 +18,7 @@
 ## 🌟 The Problem
 Cybercrime operates in complex, organized networks. Traditional reporting mechanisms treat incidents as isolated events, missing the broader connections between scammers, mules, and kingpins. **FraudShield bridges this gap.**
 
-## ✨ Next-Level Features
+## ✨ Features
 
 ### 🕸️ Interactive Network Intelligence
 Stop looking at spreadsheets. FraudShield dynamically maps connections between scammers, victims, and digital assets (Bank Accounts, Crypto Wallets, UPI IDs) using a massive **React Flow** powered intelligence canvas. 
