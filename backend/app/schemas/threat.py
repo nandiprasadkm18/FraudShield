@@ -20,6 +20,9 @@ class ThreatStreamResponse(BaseModel):
     severity: str
     timestamp: str
     description: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    location: Optional[str] = None
 
 class StreamFeedResponse(BaseModel):
     feed: List[ThreatStreamResponse]

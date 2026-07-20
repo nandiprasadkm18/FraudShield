@@ -64,16 +64,28 @@ async def websocket_endpoint(websocket: WebSocket):
 @router.get("/stream", response_model=StreamFeedResponse)
 async def get_intel_stream(db: AsyncSession = Depends(get_db), cursor: Optional[str] = None, limit: int = 50):
     reports = await threat_repo.get_recent_stream(db, limit=limit, cursor=cursor)
+    
+    report_ids = [r.id for r in reports]
+    geo_map = {}
+    if report_ids:
+        geo_res = await db.execute(select(GeoEvents).filter(GeoEvents.reportId.in_(report_ids)))
+        for g in geo_res.scalars().all():
+            geo_map[g.reportId] = {"lat": g.lat, "lng": g.lng, "location": g.district or g.state or "Unknown Location"}
+            
     feed = []
     for r in reports:
+        geo = geo_map.get(r.id, {})
         feed.append({
             "id": r.id,
             "type": r.fraudType or "Unknown Fraud Type",
             "module": "AI_ANALYSIS",
             "confidence": r.confidenceScore,
-            "severity": r.severity.value.lower() if r.severity else "unknown",
+            "severity": r.severity.value.lower() if hasattr(r.severity, "value") else str(r.severity).lower() if r.severity else "unknown",
             "timestamp": r.createdAt.isoformat() + "Z",
-            "description": f"Phone: {r.targetPhoneNumber} — Verdict: {r.verdict.value}"
+            "description": f"Phone: {r.targetPhoneNumber} — Verdict: {r.verdict.value if hasattr(r.verdict, 'value') else str(r.verdict)}",
+            "lat": geo.get("lat"),
+            "lng": geo.get("lng"),
+            "location": geo.get("location")
         })
     return {"feed": feed, "total": len(feed)}
 

@@ -1,9 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { motion } from "framer-motion";
+
+function MapController({ selectedReport, setActiveLayer }: { selectedReport: any; setActiveLayer: (l: string) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedReport && selectedReport.lat && selectedReport.lng) {
+      setActiveLayer("community");
+      map.flyTo([selectedReport.lat, selectedReport.lng], 12, { animate: true, duration: 1.5 });
+    }
+  }, [selectedReport, map, setActiveLayer]);
+  return null;
+}
 
 interface GeoEvent {
   id: string;
@@ -40,9 +51,10 @@ type ActiveLayer = "community" | "districts" | "cities" | "states" | "financial"
 
 interface MapComponentProps {
   newReport?: { lat?: number; lng?: number; id: string; type: string; severity: string } | null;
+  selectedReport?: { lat?: number; lng?: number; id: string; type: string; severity: string } | null;
 }
 
-export default function MapComponent({ newReport }: MapComponentProps = {}) {
+export default function MapComponent({ newReport, selectedReport }: MapComponentProps = {}) {
   const [mounted, setMounted] = useState(false);
   const [communityEvents, setCommunityEvents] = useState<GeoEvent[]>([]);
   const [ncrbDistricts, setNcrbDistricts] = useState<NcrbData[]>([]);
@@ -167,6 +179,8 @@ export default function MapComponent({ newReport }: MapComponentProps = {}) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
 
+        <MapController selectedReport={selectedReport} setActiveLayer={setActiveLayer as any} />
+
         {/* LAYER RENDERER */}
         {activeLayer === "financial" ? (
           // RENDER FINANCIAL DATA
@@ -220,20 +234,25 @@ export default function MapComponent({ newReport }: MapComponentProps = {}) {
           })
         ) : activeLayer === "community" ? (
           // RENDER COMMUNITY EVENTS
-          renderData.map((event: GeoEvent) => (
-            <CircleMarker
-              key={event.id}
-              center={[event.lat, event.lng]}
-              radius={event.severity === "critical" ? 8 : event.severity === "high" ? 6 : 5}
-              pathOptions={{
-                color: severityColor(event.severity),
-                fillColor: severityColor(event.severity),
-                fillOpacity: 0.3,
-                weight: 2,
-                opacity: 0.9,
-              }}
-            >
-              <Popup>
+          renderData.map((event: GeoEvent, idx: number) => {
+            // Apply a slight deterministic jitter based on index so overlapping markers are visible
+            const jitterLat = event.lat + (idx % 2 === 0 ? 1 : -1) * (idx % 5) * 0.005;
+            const jitterLng = event.lng + (idx % 3 === 0 ? 1 : -1) * (idx % 4) * 0.005;
+            
+            return (
+              <CircleMarker
+                key={event.id}
+                center={[jitterLat, jitterLng]}
+                radius={event.severity === "critical" ? 8 : event.severity === "high" ? 6 : 5}
+                pathOptions={{
+                  color: severityColor(event.severity),
+                  fillColor: severityColor(event.severity),
+                  fillOpacity: 0.3,
+                  weight: 2,
+                  opacity: 0.9,
+                }}
+              >
+                <Popup>
                 <div className="p-1 min-w-[160px]">
                   <div className="font-bold text-zinc-100 text-sm">{event.fraudType}</div>
                   <div className="text-xs text-zinc-400 mb-1 uppercase tracking-wider">{event.severity}</div>

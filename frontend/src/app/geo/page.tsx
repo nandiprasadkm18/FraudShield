@@ -22,6 +22,7 @@ interface LiveAlert {
   description: string;
   lat?: number;
   lng?: number;
+  location?: string;
 }
 
 const containerVariants: any = {
@@ -38,6 +39,7 @@ export default function CommandCentre() {
   const [liveAlerts, setLiveAlerts] = useState<LiveAlert[]>([]);
   const [isLoadingFeed, setIsLoadingFeed] = useState(true);
   const [highRiskCount, setHighRiskCount] = useState(0);
+  const [selectedReport, setSelectedReport] = useState<LiveAlert | null>(null);
 
   // Aggregate stats from DB
   const [stats, setStats] = useState<{
@@ -117,6 +119,7 @@ export default function CommandCentre() {
             description: `Phone: ${msg.phone} — Verdict: ${msg.verdict}`,
             lat: msg.lat,
             lng: msg.lng,
+            location: msg.district || msg.state || "Unknown Location",
           };
           setLiveAlerts((prev) => [newAlert, ...prev].slice(0, 50));
           setHighRiskCount((prev) =>
@@ -228,7 +231,7 @@ export default function CommandCentre() {
       >
         <div className="col-span-2 relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/5 shadow-2xl">
           <ErrorBoundary>
-            <MapComponent newReport={liveAlerts[0] || null} />
+            <MapComponent newReport={liveAlerts[0] || null} selectedReport={selectedReport} />
           </ErrorBoundary>
         </div>
 
@@ -262,11 +265,12 @@ export default function CommandCentre() {
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       className={clsx(
-                        "p-4 rounded-xl border flex flex-col gap-2 relative overflow-hidden backdrop-blur-md glass-panel-interactive cursor-default",
-                        alert.severity === 'critical' ? 'bg-critical/5 border-critical/20' :
-                          alert.severity === 'high' ? 'bg-warning/5 border-warning/20' :
-                            'bg-white/5 border-white/5'
+                        "p-4 rounded-xl border flex flex-col gap-2 relative overflow-hidden backdrop-blur-md transition-all cursor-pointer",
+                        alert.severity === 'critical' ? 'bg-critical/5 border-critical/20 hover:bg-critical/10' :
+                          alert.severity === 'high' ? 'bg-warning/5 border-warning/20 hover:bg-warning/10' :
+                            'bg-white/5 border-white/5 hover:bg-white/10'
                       )}
+                      onClick={() => setSelectedReport(alert)}
                     >
                       {alert.severity === 'critical' && (
                         <div className="absolute top-0 left-0 w-1 h-full bg-critical shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
@@ -284,6 +288,12 @@ export default function CommandCentre() {
                           alert.severity === 'critical' ? 'text-critical' : alert.severity === 'high' ? 'text-warning' : 'text-zinc-200'
                         )}>{alert.type}</div>
                         <div className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">{alert.description}</div>
+                        {alert.location && (
+                          <div className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1.5 font-mono">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                            {alert.location}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5 pl-2">
                         <span className="text-[9px] uppercase tracking-widest text-zinc-400 bg-zinc-900 px-2 py-1 rounded-md font-bold">
