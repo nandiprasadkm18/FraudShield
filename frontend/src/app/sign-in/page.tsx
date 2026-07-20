@@ -7,13 +7,13 @@ export default function SignInPage() {
     <div className="flex min-h-screen bg-[#050505] text-white font-sans">
       
       {/* LEFT SIDE: Visual Panel */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-[#052e16] via-[#022c22] to-[#050505] p-12 border-r border-[#10b981]/10">
+      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[#021f15] p-12">
         
         <div>
           {/* Logo Area */}
           <div className="flex items-center gap-4 mb-16">
-            <div className="bg-white text-black p-2 rounded-xl">
-              <Shield size={24} className="fill-black" />
+            <div className="bg-white text-black p-2 rounded-xl shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+              <Shield size={24} strokeWidth={2.5} />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight leading-none">FraudShield</h1>
@@ -22,7 +22,7 @@ export default function SignInPage() {
           </div>
           
           {/* Main Copy */}
-          <h2 className="text-5xl font-bold tracking-tight mb-6 leading-tight">
+          <h2 className="text-5xl font-extrabold tracking-tighter mb-6 leading-tight text-white">
             The national fraud<br />command centre.
           </h2>
           <p className="text-zinc-400 text-lg mb-12 max-w-md leading-relaxed">
@@ -37,12 +37,12 @@ export default function SignInPage() {
               { title: "Geo Intel", subtitle: "REAL-TIME", icon: Globe },
               { title: "AI Verdicts", subtitle: "RESPONSE", icon: Activity },
             ].map((feature, i) => (
-              <div key={i} className="bg-[#050505]/40 border border-[#10b981]/20 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 backdrop-blur-md">
-                <div className="p-3 bg-[#10b981]/10 rounded-xl border border-[#10b981]/20">
-                  <feature.icon className="text-[#34d399]" size={20} />
+              <div key={i} className="bg-[#050505] rounded-2xl p-6 flex flex-col items-center justify-center gap-3">
+                <div className="p-3 rounded-2xl border border-[#34d399]/30 shadow-[0_0_15px_rgba(52,211,153,0.15)] bg-transparent">
+                  <feature.icon className="text-[#34d399]" size={22} strokeWidth={2} />
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-sm">{feature.title}</div>
+                  <div className="font-bold text-sm text-white">{feature.title}</div>
                   <div className="text-[10px] text-[#34d399] font-mono tracking-widest mt-1">{feature.subtitle}</div>
                 </div>
               </div>
@@ -64,7 +64,7 @@ export default function SignInPage() {
         <div className="max-w-md w-full mx-auto">
           <div className="mb-8">
             <h3 className="text-[10px] text-[#34d399] font-mono tracking-widest uppercase font-bold mb-3">Sign In</h3>
-            <h2 className="text-4xl font-bold tracking-tight mb-2">Welcome back</h2>
+            <h2 className="text-4xl font-bold tracking-tight mb-2 text-white">Welcome back</h2>
             <p className="text-zinc-400 text-sm">Sign in to the FraudShield command centre.</p>
           </div>
 
@@ -79,7 +79,7 @@ export default function SignInPage() {
                 </div>
                 <input 
                   type="email" 
-                  className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-[#34d399] transition-colors"
+                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-[#34d399] transition-colors"
                   placeholder="you@fraudshield.in"
                 />
               </div>
@@ -95,7 +95,7 @@ export default function SignInPage() {
                 </div>
                 <input 
                   type="password" 
-                  className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl pl-10 pr-10 py-3 text-sm text-white focus:outline-none focus:border-[#34d399] transition-colors font-mono tracking-widest"
+                  className="w-full bg-[#0a0a0a] border border-white/5 rounded-xl pl-10 pr-10 py-3 text-sm text-white focus:outline-none focus:border-[#34d399] transition-colors font-mono tracking-widest"
                   placeholder="••••••••"
                 />
                 <button type="button" className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-white transition-colors">
@@ -106,7 +106,7 @@ export default function SignInPage() {
 
             <button 
               type="submit"
-              className="w-full bg-white text-black font-bold py-3.5 rounded-xl hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.2)] mt-8 text-sm flex items-center justify-center gap-2"
+              className="w-full bg-white text-black font-bold py-3.5 rounded-xl hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(52,211,153,0.35)] mt-8 text-sm flex items-center justify-center gap-2"
             >
               SIGN IN <span className="text-lg leading-none">&rarr;</span>
             </button>
