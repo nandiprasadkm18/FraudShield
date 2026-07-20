@@ -684,6 +684,7 @@ async def get_geospatial(db: AsyncSession = Depends(get_db)):
             "lat": e.lat,
             "lng": e.lng,
             "district": e.district,
+            "state": e.state,
             "severity": e.severity.value if e.severity else "NONE",
             "fraudType": e.threat_reports.fraudType if e.threat_reports and e.threat_reports.fraudType else "Unknown",
             "phoneNumber": e.threat_reports.targetPhoneNumber if e.threat_reports else "Unknown",

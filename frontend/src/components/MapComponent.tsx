@@ -21,6 +21,7 @@ interface GeoEvent {
   lat: number;
   lng: number;
   district: string | null;
+  state: string | null;
   severity: string;
   fraudType: string;
   phoneNumber: string;
@@ -256,8 +257,8 @@ export default function MapComponent({ newReport, selectedReport }: MapComponent
                 <div className="p-1 min-w-[160px]">
                   <div className="font-bold text-zinc-100 text-sm">{event.fraudType}</div>
                   <div className="text-xs text-zinc-400 mb-1 uppercase tracking-wider">{event.severity}</div>
-                  {event.district && (
-                    <div className="text-xs text-zinc-300">📍 {event.district}</div>
+                  {(event.district || event.state) && (
+                    <div className="text-xs text-zinc-300">📍 {event.district || event.state}</div>
                   )}
                   <div className="text-[10px] text-zinc-500 mt-1 border-t border-white/10 pt-1 uppercase tracking-widest font-mono">
                     Source: FraudShield AI Intel
@@ -267,7 +268,8 @@ export default function MapComponent({ newReport, selectedReport }: MapComponent
                 </div>
               </Popup>
             </CircleMarker>
-          ))
+            );
+          })
         ) : (
           // RENDER NCRB DATA (Districts, Cities, States)
           renderData.map((item: NcrbData, idx: number) => {
