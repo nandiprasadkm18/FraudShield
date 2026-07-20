@@ -174,7 +174,6 @@ export default function RegisterPage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Riya Sharma"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
@@ -190,7 +189,6 @@ export default function RegisterPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@fraudshield.in"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
@@ -206,7 +204,6 @@ export default function RegisterPage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="+91 98765 43210"
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
                   />
@@ -221,7 +218,6 @@ export default function RegisterPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min 6 chars"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
@@ -240,7 +236,6 @@ export default function RegisterPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-type password"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning

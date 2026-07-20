@@ -165,7 +165,6 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@fraudshield.in"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
@@ -181,7 +180,6 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
                     required
                     className="flex-1 w-full bg-transparent text-[14px] text-white placeholder:text-[#4B5563] outline-none font-medium"
                     suppressHydrationWarning
