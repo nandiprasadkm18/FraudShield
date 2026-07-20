@@ -29,7 +29,7 @@ website_pattern = Pattern(name="website_pattern", regex=r"(?<![\w.-])(?:https?:/
 website_recognizer = PatternRecognizer(supported_entity="WEBSITE", patterns=[website_pattern])
 telegram_pattern = Pattern(name="telegram_pattern", regex=r"(?:t\.me/|@)[a-zA-Z0-9_]{5,32}\b", score=0.85)
 telegram_recognizer = PatternRecognizer(supported_entity="TELEGRAM_ID", patterns=[telegram_pattern])
-crypto_pattern = Pattern(name="crypto_pattern", regex=r"\b(?:0x[a-fA-F0-9]{40}|(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39})\b", score=0.85)
+crypto_pattern = Pattern(name="crypto_pattern", regex=r"\b(?:0x[a-fA-F0-9]{40}|(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}|T[A-Za-z1-9]{33}|[1-9A-HJ-NP-Za-km-z]{32,44}|r[0-9a-zA-Z]{24,34}|[LM][a-km-zA-HJ-NP-Z1-9]{26,33}|ltc1[a-zA-HJ-NP-Z0-9]{25,39}|D[5-9A-HJ-NP-U][1-9A-HJ-NP-Za-km-z]{32}|addr1[a-z0-9]{58,120}|4[0-9AB][1-9A-HJ-NP-Za-km-z]{93})\b", score=0.85)
 crypto_recognizer = PatternRecognizer(supported_entity="CRYPTO_WALLET", patterns=[crypto_pattern])
 email_pattern = Pattern(name="email_pattern", regex=r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", score=0.85)
 email_recognizer = PatternRecognizer(supported_entity="EMAIL_ADDRESS", patterns=[email_pattern])

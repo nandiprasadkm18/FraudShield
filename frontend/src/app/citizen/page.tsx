@@ -509,17 +509,7 @@ END:VCARD`;
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs font-mono tracking-widest text-zinc-400 mb-1">INVESTIGATION STATUS</div>
-                <div className={clsx("font-bold flex items-center gap-2 justify-end tracking-wider", colorClass,
-                  risk === "critical" || risk === "high" ? "animate-pulse" : "")}>
-                  <div className={clsx("w-2 h-2 rounded-full", bgClass)} />
-                  {risk === "critical" || risk === "high" ? "ACTIVE / OPEN" : "RESOLVED / SAFE"}
-                </div>
-                <div className="text-[10px] text-zinc-500 mt-2 font-mono uppercase tracking-widest">
-                  {new Date().toLocaleString()}
-                </div>
-              </div>
+
             </div>
 
             {/* DASHBOARD GRID */}

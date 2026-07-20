@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                   <XAxis dataKey="date" stroke="#52525b" fontSize={11} fontFamily="monospace" tickLine={false} axisLine={false} dy={10} />
                   <YAxis stroke="#52525b" fontSize={11} fontFamily="monospace" tickLine={false} axisLine={false} dx={-10} tickFormatter={(value) => `₹${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`} />
-                  <Tooltip contentStyle={customTooltipStyle} formatter={(value: number) => [`₹${value.toLocaleString()}`, "Amount"]} itemStyle={{ color: '#eab308', fontWeight: 'bold' }} cursor={{ stroke: '#eab308', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                  <Tooltip contentStyle={customTooltipStyle} formatter={(value: any) => [`₹${Number(value || 0).toLocaleString()}`, "Amount"]} itemStyle={{ color: '#eab308', fontWeight: 'bold' }} cursor={{ stroke: '#eab308', strokeWidth: 1, strokeDasharray: '4 4' }} />
                   <Area type="monotone" dataKey="amount" stroke="#eab308" strokeWidth={3} fillOpacity={1} fill="url(#colorFinance)" dot={{ r: 4, fill: "#eab308", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#000", stroke: "#eab308", strokeWidth: 3 }} animationDuration={1500} animationEasing="ease-out" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -341,7 +341,7 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                   <XAxis dataKey="name" stroke="#52525b" fontSize={11} fontFamily="monospace" tickLine={false} axisLine={false} dy={10} angle={-45} textAnchor="end" />
                   <YAxis stroke="#52525b" fontSize={11} fontFamily="monospace" tickLine={false} axisLine={false} dx={-10} allowDecimals={false} />
-                  <Tooltip formatter={(value: number) => [value, "State Count"]} contentStyle={customTooltipStyle} itemStyle={{ color: '#ec4899', fontWeight: 'bold' }} cursor={{ fill: '#ffffff05' }} />
+                  <Tooltip formatter={(value: any) => [value, "State Count"]} contentStyle={customTooltipStyle} itemStyle={{ color: '#ec4899', fontWeight: 'bold' }} cursor={{ fill: '#ffffff05' }} />
                   <Bar dataKey="count" fill="url(#colorState)" radius={[4, 4, 0, 0]} animationDuration={1500} animationEasing="ease-out" />
                 </BarChart>
               </ResponsiveContainer>

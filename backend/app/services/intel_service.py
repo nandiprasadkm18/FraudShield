@@ -221,6 +221,16 @@ class IntelService:
         }
 
         extracted_entities = out.get("extracted_scammer_entities", [])
+        
+        # Merge IFSC code into Bank Account if both exist
+        bank_accounts = [e for e in extracted_entities if e.get("type") == "IN_BANK_ACCOUNT"]
+        ifsc_codes = [e for e in extracted_entities if e.get("type") == "IN_IFSC_CODE"]
+        if bank_accounts and ifsc_codes:
+            bank_val = bank_accounts[0].get("value")
+            ifsc_val = ifsc_codes[0].get("value")
+            bank_accounts[0]["value"] = f"{bank_val} (IFSC: {ifsc_val})"
+            # Filter out IFSC codes so they aren't created as separate nodes
+            extracted_entities = [e for e in extracted_entities if e.get("type") != "IN_IFSC_CODE"]
         for ent in extracted_entities:
             raw_type = ent.get("type")
             val = ent.get("value")
