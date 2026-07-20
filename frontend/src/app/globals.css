@@ -111,3 +111,13 @@ h6 {
 
 /* Remove white background from minimap */
 .react-flow__minimap { background: #0a0a0a !important; border: 1px solid rgba(255,255,255,0.05) !important; border-radius: 12px !important; }
+
+/* ── Override browser autofill styles ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px black inset !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
