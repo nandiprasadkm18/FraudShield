@@ -546,8 +546,8 @@ async def get_network(db: AsyncSession = Depends(get_db), layout: str = "force")
     )
     actual_scammer_phones = scammer_phones_count.scalar() or 0
 
-    # Sum total amount reported from StateFinancialImpact (real DB data)
-    amount_result = await db.execute(select(func.sum(StateFinancialImpact.amountReported)))
+    # Sum total amount reported from ThreatReports (financialExposure)
+    amount_result = await db.execute(select(func.sum(ThreatReports.financialExposure)))
     total_amount_reported = amount_result.scalar() or 0
 
     stats = {
