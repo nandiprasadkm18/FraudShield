@@ -7,6 +7,7 @@ groq
 httpx
 networkx
 passlib[bcrypt]
+bcrypt==3.2.2
 presidio-analyzer
 presidio-anonymizer
 pydantic
