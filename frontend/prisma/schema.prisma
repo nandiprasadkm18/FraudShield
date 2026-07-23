@@ -1,0 +1,441 @@
+// Raksha Setu — Prisma Schema (PostgreSQL)
+//
+// Data principles:
+// - No synthetic data is ever seeded
+// - "Unknown / Insufficient evidence" is a valid first-class state
+// - Every write path carries audit fields (createdBy, organizationId, sourceIp)
+// - Payload text is stored for audit/similarity search; hash is stored separately
+// - GeoEvents only created from user-supplied location, never silent IP geolocation
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// ORGANISATION & USER (Multi-tenancy)
+// ─────────────────────────────────────────────────────────────
+
+enum OrgType {
+  CITIZEN
+  BANK
+  LAW_ENFORCEMENT
+  PLATFORM
+}
+
+enum UserRole {
+  CITIZEN
+  BANK_ANALYST
+  LAW_ENFORCEMENT
+  PLATFORM_ADMIN
+}
+
+enum ApprovalStatus {
+  APPROVED
+  PENDING_APPROVAL
+  REJECTED
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  type      OrgType  @default(CITIZEN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  threatReports ThreatReport[]
+  networkNodes  NetworkNode[]
+  networkEdges  NetworkEdge[]
+  geoEvents     GeoEvent[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  passwordHash   String? // null if Google OAuth only
+  name           String?
+  role           UserRole       @default(CITIZEN)
+  approvalStatus ApprovalStatus @default(APPROVED)
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  threatReports   ThreatReport[]
+  verdictFeedback VerdictFeedback[]
+
+  // NextAuth.js adapter fields
+  accounts Account[]
+  sessions Session[]
+
+  @@map("users")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────
+// THREAT REPORTS (Core)
+// ─────────────────────────────────────────────────────────────
+
+enum Verdict {
+  SCAM
+  SUSPICIOUS
+  BENIGN
+  INSUFFICIENT_EVIDENCE
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  NONE
+}
+
+enum Channel {
+  SMS
+  WHATSAPP
+  PHONE_CALL
+  EMAIL
+  OTHER
+  UNKNOWN
+}
+
+model ThreatReport {
+  id                String   @id @default(cuid())
+  targetPhoneNumber String
+  payloadText       String?  @db.Text // Raw intercepted message — for audit + similarity
+  payloadHash       String // SHA-256 of payloadText — for deduplication
+  channel           Channel  @default(UNKNOWN)
+  verdict           Verdict
+  severity          Severity
+  confidenceScore   Float
+  fraudType         String?
+  tags              String[] // PostgreSQL native array
+  timelineSteps     Json     @default("[]") // [{step: string, detail: string}]
+  reasoning         String?  @db.Text
+  escalate          Boolean  @default(false)
+
+  // Audit trail
+  createdAt       DateTime      @default(now())
+  createdByUserId String?
+  createdByUser   User?         @relation(fields: [createdByUserId], references: [id])
+  sourceIp        String?
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+
+  groqCallLogId   String?
+  phoneReputation PhoneReputation?  @relation(fields: [targetPhoneNumber], references: [phoneNumber])
+  networkNodes    NetworkNode[]
+  geoEvents       GeoEvent[]
+  verdictFeedback VerdictFeedback[]
+
+  @@index([targetPhoneNumber])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@index([verdict])
+  @@map("threat_reports")
+}
+
+// ─────────────────────────────────────────────────────────────
+// LEGACY MODELS — kept for backward compat with existing API routes
+// ─────────────────────────────────────────────────────────────
+
+model Report {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  transcript  String?
+  riskScore   Int?
+  riskLevel   String?
+  fraudType   String?
+  confidence  Float?
+  indicators  String?
+  actions     String?
+  createdAt   DateTime @default(now())
+
+  @@map("reports")
+}
+
+model NumberReputation {
+  id             String   @id @default(cuid())
+  phoneNumber    String   @unique
+  reportsCount   Int      @default(0)
+  scamCategory   String?
+  riskScore      Int      @default(0)
+  riskLevel      String   @default("Low")
+  lastReportedAt DateTime @default(now())
+
+  @@map("number_reputations")
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHONE REPUTATION (Computed aggregate)
+// ─────────────────────────────────────────────────────────────
+
+model PhoneReputation {
+  phoneNumber         String   @id
+  reportCount         Int      @default(0)
+  lastReportedAt      DateTime @default(now())
+  aggregatedRiskScore Float    @default(0)
+  dominantSeverity    Severity @default(NONE)
+  dominantFraudType   String?
+  updatedAt           DateTime @updatedAt
+
+  threatReports ThreatReport[]
+
+  @@map("phone_reputations")
+}
+
+// ─────────────────────────────────────────────────────────────
+// FRAUD NETWORK GRAPH
+// ─────────────────────────────────────────────────────────────
+
+enum NodeType {
+  PHONE_NUMBER
+  UPI_ID
+  BANK_ACCOUNT
+  WEBSITE
+  EMAIL
+}
+
+model NetworkNode {
+  id             String        @id @default(cuid())
+  entityType     NodeType
+  entityValue    String
+  label          String?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  reportId       String
+  report         ThreatReport  @relation(fields: [reportId], references: [id])
+  createdAt      DateTime      @default(now())
+
+  sourceEdges NetworkEdge[] @relation("SourceNode")
+  targetEdges NetworkEdge[] @relation("TargetNode")
+
+  @@unique([entityValue, reportId])
+  @@index([entityValue])
+  @@map("network_nodes")
+}
+
+model NetworkEdge {
+  id             String        @id @default(cuid())
+  sourceNodeId   String
+  sourceNode     NetworkNode   @relation("SourceNode", fields: [sourceNodeId], references: [id])
+  targetNodeId   String
+  targetNode     NetworkNode   @relation("TargetNode", fields: [targetNodeId], references: [id])
+  weight         Float         @default(1.0)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  reportId       String
+  createdAt      DateTime      @default(now())
+
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@map("network_edges")
+}
+
+// ─────────────────────────────────────────────────────────────
+// GEO EVENTS
+// ─────────────────────────────────────────────────────────────
+
+enum LocationSource {
+  USER_SUPPLIED
+  IP_APPROXIMATE
+}
+
+model GeoEvent {
+  id             String         @id @default(cuid())
+  lat            Float
+  lng            Float
+  district       String?
+  pincode        String?
+  reportId       String
+  report         ThreatReport   @relation(fields: [reportId], references: [id])
+  severity       Severity
+  locationSource LocationSource
+  organizationId String?
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime       @default(now())
+
+  @@index([severity])
+  @@index([createdAt])
+  @@map("geo_events")
+}
+
+// ─────────────────────────────────────────────────────────────
+// GROQ AUDIT LOG
+// ─────────────────────────────────────────────────────────────
+
+model GroqCallLog {
+  id                String   @id @default(cuid())
+  payloadHash       String
+  model             String
+  latencyMs         Int
+  promptTokens      Int      @default(0)
+  completionTokens  Int      @default(0)
+  success           Boolean
+  schemaValid       Boolean
+  degraded          Boolean  @default(false)
+  injectionDetected Boolean  @default(false)
+  errorMessage      String?  @db.Text
+  reportId          String?
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([success])
+  @@map("groq_call_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// VERDICT FEEDBACK
+// ─────────────────────────────────────────────────────────────
+
+enum FeedbackType {
+  ACCURATE
+  FALSE_POSITIVE
+  FALSE_NEGATIVE
+}
+
+model VerdictFeedback {
+  id        String       @id @default(cuid())
+  reportId  String
+  report    ThreatReport @relation(fields: [reportId], references: [id])
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id])
+  feedback  FeedbackType
+  comment   String?      @db.Text
+  createdAt DateTime     @default(now())
+
+  @@index([reportId])
+  @@map("verdict_feedback")
+}
+
+// ─────────────────────────────────────────────────────────────
+// NCRB GOVERNMENT DATASETS (LAYER 1 GEOSPATIAL)
+// ─────────────────────────────────────────────────────────────
+
+model GovernmentStateCybercrime {
+  id         String   @id @default(cuid())
+  state      String   @unique
+  year       Int
+  crimeCount Int
+  metadata   Json?
+  source     String   @default("NCRB Crime in India 2023")
+  createdAt  DateTime @default(now())
+
+  @@map("gov_state_cybercrime")
+}
+
+model GovernmentCityCybercrime {
+  id         String   @id @default(cuid())
+  city       String
+  state      String
+  year       Int
+  crimeCount Int
+  metadata   Json?
+  source     String   @default("NCRB Crime in India 2023")
+  createdAt  DateTime @default(now())
+
+  @@unique([city, state])
+  @@map("gov_city_cybercrime")
+}
+
+model GovernmentDistrictCybercrime {
+  id         String   @id @default(cuid())
+  district   String
+  state      String
+  year       Int
+  crimeCount Int
+  metadata   Json?
+  source     String   @default("NCRB Crime in India 2023")
+  createdAt  DateTime @default(now())
+
+  @@unique([district, state])
+  @@map("gov_district_cybercrime")
+}
+
+model StateCoordinate {
+  id   String @id @default(cuid())
+  name String @unique
+  lat  Float
+  lng  Float
+
+  @@map("state_coordinates")
+}
+
+model CityCoordinate {
+  id    String @id @default(cuid())
+  name  String
+  state String
+  lat   Float
+  lng   Float
+
+  @@unique([name, state])
+  @@map("city_coordinates")
+}
+
+model DistrictCoordinate {
+  id    String @id @default(cuid())
+  name  String
+  state String
+  lat   Float
+  lng   Float
+
+  @@unique([name, state])
+  @@map("district_coordinates")
+}
+
+model StateFinancialImpact {
+  id             String   @id @default(cuid())
+  state          String   @unique
+  totalIncidents Int
+  amountReported Float // In Lakhs
+  lienAmount     Float // In Lakhs
+  refundedAmount Float // In Lakhs
+  createdAt      DateTime @default(now())
+}
