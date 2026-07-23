@@ -543,7 +543,7 @@ function GraphContent() {
 
   // WebSocket for live updates
   useEffect(() => {
-    const WS_BASE = "ws://localhost:8000";
+    const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
     const ws = new WebSocket(`${WS_BASE}/api/intel/ws`);
     wsRef.current = ws;
 

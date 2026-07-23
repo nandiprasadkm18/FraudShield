@@ -22,7 +22,7 @@ export default function UsersPage() {
     const fetchUsers = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8000/api/v1/users", {
+        const res = await fetch("/api/v1/users", {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
