@@ -113,6 +113,7 @@ export default function MapComponent({ newReport, selectedReport }: MapComponent
           id: newReport.id,
           lat: newReport.lat!,
           lng: newReport.lng!,
+          state: "Unknown",
           district: null,
           severity: newReport.severity,
           fraudType: newReport.type,
