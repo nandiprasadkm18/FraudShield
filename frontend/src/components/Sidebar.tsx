@@ -16,6 +16,8 @@ export function Sidebar() {
   const [graphIntelOpen, setGraphIntelOpen] = useState(pathname.includes('/network'));
   const [profileOpen, setProfileOpen] = useState(false);
 
+  const [isOpen, setIsOpen] = useState(true);
+
   useEffect(() => {
     const userStr = localStorage.getItem("user");
     if (userStr) {
@@ -49,7 +51,13 @@ export function Sidebar() {
   ];
 
   return (
-    <div className="w-64 h-full bg-[#050505] border-r border-white/5 flex flex-col justify-between overflow-y-auto custom-scrollbar font-sans">
+    <>
+      <motion.div
+        initial={false}
+        animate={{ width: isOpen ? 256 : 0, borderRightWidth: isOpen ? 1 : 0 }}
+        className="h-full bg-[#050505] border-white/5 shrink-0 overflow-hidden relative"
+      >
+        <div className="w-64 h-full flex flex-col justify-between overflow-y-auto overflow-x-hidden custom-scrollbar font-sans absolute top-0 left-0">
 
       <div>
         {/* Logo Area */}
@@ -272,6 +280,17 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      </motion.div>
+
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        initial={false}
+        animate={{ left: isOpen ? 256 : 0 }}
+        className="fixed top-6 z-[60] p-1.5 bg-[#0a0a0a] border border-white/10 border-l-0 text-white/50 hover:text-white transition-colors rounded-r-lg shadow-2xl flex items-center justify-center cursor-pointer"
+      >
+        <ChevronUp size={16} className={clsx("transition-transform duration-300", isOpen ? "-rotate-90" : "rotate-90")} />
+      </motion.button>
+    </>
   );
 }
