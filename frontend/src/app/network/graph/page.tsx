@@ -241,6 +241,7 @@ function GraphOverviewPanel({
   edges: any[];
   searchTerm: string;
   selectedNode: any;
+  onClose: () => void;
 }) {
   const rows = useMemo(() => {
     const counts = new Map<string, { count: number; meta: any }>();
@@ -288,8 +289,14 @@ function GraphOverviewPanel({
             {formatGraphValue(nodes.length)} entities / {formatGraphValue(edges.length)} links
           </div>
         </div>
-        <div className="rounded-lg bg-[#34d399]/10 p-2 text-[#34d399]">
-          <ListFilter size={16} />
+        <div className="flex gap-2 items-center">
+          <button onClick={onClose} className="rounded-lg bg-white/5 p-2 text-white/50 hover:bg-white/10 hover:text-white transition-all flex items-center gap-2 border border-white/5">
+            <Network size={12} />
+            <span className="text-[10px] font-mono tracking-widest uppercase">Hide</span>
+          </button>
+          <div className="rounded-lg bg-[#34d399]/10 p-2 text-[#34d399]">
+            <ListFilter size={16} />
+          </div>
         </div>
       </div>
 
@@ -918,13 +925,25 @@ function GraphContent() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {showOverview && (
+          {showOverview ? (
             <GraphOverviewPanel
               nodes={nodes}
               edges={edges}
               searchTerm={searchTerm}
               selectedNode={selectedNode}
+              onClose={() => setShowOverview(false)}
             />
+          ) : (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              onClick={() => setShowOverview(true)}
+              className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 bg-[#0d0d0d]/95 backdrop-blur border border-white/10 rounded-xl text-[10px] font-mono tracking-widest text-white/50 hover:text-[#34d399] hover:border-[#34d399]/30 transition-all z-40 shadow-2xl"
+            >
+              <Network size={12} />
+              Show Overview
+            </motion.button>
           )}
         </AnimatePresence>
         <GraphLaneGuide />
@@ -955,14 +974,7 @@ function GraphContent() {
           <CustomControls />
         </ReactFlow>
 
-        {/* Legend toggle */}
-        <button
-          onClick={() => setShowOverview(v => !v)}
-          className="absolute bottom-8 left-6 flex items-center gap-2 px-4 py-2 bg-[#0d0d0d]/95 backdrop-blur border border-white/10 rounded-xl text-[10px] font-mono tracking-widest text-white/50 hover:text-[#34d399] hover:border-[#34d399]/30 transition-all z-40"
-        >
-          <Network size={12} />
-          {showOverview ? "Hide" : "Show"} Overview
-        </button>
+
 
         {/* Node detail panel */}
         <AnimatePresence>
