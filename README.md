@@ -11,6 +11,14 @@
 
 ---
 
+<div align="center">
+  <img src="frontend/public/screenshot.png" alt="FraudShield Website Screenshot" width="800"/>
+  <br/>
+  <i>(Please upload your website screenshot to frontend/public/screenshot.png or update this path)</i>
+</div>
+
+---
+
 > [!IMPORTANT]
 > FraudShield aggregates siloed cybercrime data (UPI, Crypto, Emails, Telegram, Phone Numbers) into a unified visual graph, empowering Law Enforcement to track fraud rings, identify kingpins, and stop organized scams in real-time.
 
