@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_analyzer.nlp_engine import NlpEngineProvider
 from pydantic import BaseModel, Field, ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from typing import List, Optional, Dict, Any
@@ -10,7 +11,15 @@ import os
 from app.core.config import settings
 logger = logging.getLogger(__name__)
 
-analyzer = AnalyzerEngine()
+# Configure Presidio to use small spaCy model to avoid OOM on 512MB RAM servers (like Render)
+configuration = {
+    "nlp_engine_name": "spacy",
+    "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
+}
+provider = NlpEngineProvider(nlp_configuration=configuration)
+nlp_engine = provider.create_engine()
+
+analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])
 
 # Custom Pattern Recognizers for Indian PII
 aadhaar_pattern = Pattern(name="aadhaar_pattern", regex=r"\b\d{4}\s?\d{4}\s?\d{4}\b", score=0.85)

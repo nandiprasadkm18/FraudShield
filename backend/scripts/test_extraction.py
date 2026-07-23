@@ -4,8 +4,17 @@ import os
 import re
 
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_analyzer.nlp_engine import NlpEngineProvider
+import json
 
-analyzer = AnalyzerEngine()
+configuration = {
+    "nlp_engine_name": "spacy",
+    "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
+}
+provider = NlpEngineProvider(nlp_configuration=configuration)
+nlp_engine = provider.create_engine()
+
+analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])
 
 aadhaar_pattern = Pattern(name="aadhaar_pattern", regex=r"\b\d{4}\s?\d{4}\s?\d{4}\b", score=0.85)
 aadhaar_recognizer = PatternRecognizer(supported_entity="IN_AADHAAR", patterns=[aadhaar_pattern])
