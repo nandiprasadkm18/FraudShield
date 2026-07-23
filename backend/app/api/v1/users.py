@@ -7,7 +7,7 @@ from app.models.domain import Users
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 async def get_all_users(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_admin)
