@@ -236,6 +236,7 @@ function GraphOverviewPanel({
   edges,
   searchTerm,
   selectedNode,
+  onClose,
 }: {
   nodes: any[];
   edges: any[];
